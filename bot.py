@@ -2,11 +2,10 @@ import sqlite3
 import datetime
 from telegram import *
 from telegram.ext import *
-import asyncio
 
 # ================= CONFIG =================
 TOKEN = "8279973060:AAGp9bxREyPd29xzv85mcWvTA33WIltyi3A"
-ADMIN_ID = 8279973060
+ADMIN_ID = 8289491009
 BOT_USERNAME = "Afghan_starbot"
 
 # ================= DATABASE =================
@@ -44,16 +43,6 @@ def main_kb():
         ["🤖 د رباټ په اړه"]
     ], resize_keyboard=True)
 
-def admin_kb():
-    return ReplyKeyboardMarkup([
-        ["👥 ټول یوزران", "📊 احصایه"],
-        ["📢 برودکاست"],
-        ["💰 ریوارد کنټرول"],
-        ["📣 آټو پوسټ"],
-        ["➕ فورس چینل", "➖ حذف چینل"],
-        ["🔙 شاته"]
-    ], resize_keyboard=True)
-
 # ================= USER =================
 def get_user(uid):
     cursor.execute("SELECT * FROM users WHERE id=?", (uid,))
@@ -86,13 +75,21 @@ async def force_join(update, context):
         buttons.append([InlineKeyboardButton("✅ تایید", callback_data="check_join")])
 
         if update.message:
-            await update.message.reply_text("🚨 لومړی چینلونه جواین کړئ:", reply_markup=InlineKeyboardMarkup(buttons))
-        else:
+            await update.message.reply_text("🚨 چینلونه جواین کړئ:", reply_markup=InlineKeyboardMarkup(buttons))
+        elif update.callback_query:
             await update.callback_query.message.reply_text("🚨 چینلونه جواین کړئ:", reply_markup=InlineKeyboardMarkup(buttons))
 
         return False
 
     return True
+
+# ================= CHECK JOIN (FIXED) =================
+async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if await force_join(update, context):
+        await query.message.reply_text("✅ تایید شو", reply_markup=main_kb())
 
 # ================= START =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -116,6 +113,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ================= MAIN =================
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
     text = update.message.text
     uid = update.effective_user.id
     get_user(uid)
@@ -123,11 +123,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await force_join(update, context):
         return
 
-    # 📊 حالت
+    # حالت
     if text == "📊 حالت":
         cursor.execute("SELECT balance FROM users WHERE id=?", (uid,))
         bal = cursor.fetchone()[0]
-
         name = update.effective_user.first_name
 
         await update.message.reply_text(
@@ -137,37 +136,38 @@ f"""🤵🏻‍♂️استعمالوونکی = {name}
 💵ستاسو پيسو اندازه= {bal} AF"""
         )
 
-    # 👥 دعوت
+    # دعوت
     elif text == "👥 دعوت":
         link = f"https://t.me/{BOT_USERNAME}?start={uid}"
         await update.message.reply_text(f"🔗 لینک:\n{link}\nهر کس = 2 AF")
 
-    # 🎁 بونس
+    # ورځنی بونس
     elif text == "🎁 ورځنی بونس":
         today = str(datetime.date.today())
         cursor.execute("SELECT last_daily FROM users WHERE id=?", (uid,))
         last = cursor.fetchone()[0]
 
         if last == today:
-            await update.message.reply_text("❌ نن مو اخیستی")
+            await update.message.reply_text("❌ نن اخیستل شوی")
         else:
             cursor.execute("UPDATE users SET balance=balance+0.5, last_daily=? WHERE id=?", (today, uid))
             conn.commit()
             await update.message.reply_text("✅ 0.5 AF اضافه شول")
 
+    # اوونیز بونس
     elif text == "🔥 اوونیز بونس":
         week = str(datetime.date.today().isocalendar()[1])
         cursor.execute("SELECT last_weekly FROM users WHERE id=?", (uid,))
         last = cursor.fetchone()[0]
 
         if last == week:
-            await update.message.reply_text("❌ دا هفته مو اخیستی")
+            await update.message.reply_text("❌ دا هفته اخیستل شوی")
         else:
             cursor.execute("UPDATE users SET balance=balance+5, last_weekly=? WHERE id=?", (week, uid))
             conn.commit()
             await update.message.reply_text("✅ 5 AF اضافه شول")
 
-    # 📱 نمبر
+    # نمبر
     elif text == "📱 شمېره ثبت":
         await update.message.reply_text("10 رقمي نمبر داخل کړئ:")
 
@@ -175,19 +175,19 @@ f"""🤵🏻‍♂️استعمالوونکی = {name}
         if len(text) == 10:
             cursor.execute("UPDATE users SET phone=? WHERE id=?", (text, uid))
             conn.commit()
-            await update.message.reply_text("✅ ثبت شو")
+            await update.message.reply_text("✅ نمبر ثبت شو")
         else:
-            await update.message.reply_text("❌ باید 10 عدد وي")
+            await update.message.reply_text("❌ باید 10 عدده وي")
 
-    # ⚡ ایزي لوډ
+    # ایزي لوډ
     elif text == "⚡ ایزي لوډ":
         cursor.execute("SELECT balance FROM users WHERE id=?", (uid,))
         bal = cursor.fetchone()[0]
 
         if bal < 50:
-            await update.message.reply_text("⚠️ لږ تر لږه 50 افغانۍ باید ولرئ")
+            await update.message.reply_text("⚠️ لږ تر لږه 50 AF باید ولرئ")
 
-    # 🤖 about
+    # about
     elif text == "🤖 د رباټ په اړه":
         await update.message.reply_text("🤖 دا بوټ د افغانانو لپاره جوړ شوی ❤️")
 
@@ -199,47 +199,16 @@ async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor.execute("SELECT COUNT(*) FROM users")
     total = cursor.fetchone()[0]
 
-    today = str(datetime.date.today())
-    cursor.execute("SELECT COUNT(*) FROM users WHERE join_date=?", (today,))
-    daily = cursor.fetchone()[0]
-
-    month = today[:7]
-    cursor.execute("SELECT COUNT(*) FROM users WHERE join_date LIKE ?", (f"{month}%",))
-    monthly = cursor.fetchone()[0]
-
-    await update.message.reply_text(
-f"""👑 Admin Panel
-
-👥 ټول یوزران: {total}
-📅 ورځني یوزران: {daily}
-📆 میاشتني یوزران: {monthly}""",
-        reply_markup=admin_kb()
-    )
-
-# ================= BROADCAST =================
-async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
-        return
-
-    msg = " ".join(context.args)
-    cursor.execute("SELECT id FROM users")
-    users = cursor.fetchall()
-
-    for u in users:
-        try:
-            await context.bot.send_message(u[0], msg)
-        except:
-            pass
-
-    await update.message.reply_text("✅ واستول شو")
+    await update.message.reply_text(f"👑 Admin Panel\n👥 Users: {total}")
 
 # ================= RUN =================
 app = Application.builder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("admin", admin))
-app.add_handler(CommandHandler("broadcast", broadcast))
 app.add_handler(CallbackQueryHandler(check_join, pattern="check_join"))
+
+# 🔥 FIXED LINE
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler))
 
 print("✅ BOT RUNNING...")
