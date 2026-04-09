@@ -4,13 +4,14 @@ from telegram import *
 from telegram.ext import *
 
 TOKEN = "8279973060:AAGp9bxREyPd29xzv85mcWvTA33WIltyi3A"
-ADMIN_ID = 8289491009
+ADMIN_ID = 8459166394
 BOT_USERNAME = "Afghan_star_bot"
 
 # ================= DATABASE =================
 conn = sqlite3.connect("bot.db", check_same_thread=False)
 cursor = conn.cursor()
 
+# Create users table if it doesn't exist
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
 id INTEGER PRIMARY KEY,
@@ -23,6 +24,7 @@ last_weekly TEXT
 )
 """)
 
+# Create withdrawals table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS withdrawals(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,6 +36,7 @@ date TEXT
 )
 """)
 
+# Create channels table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS channels(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +44,7 @@ username TEXT
 )
 """)
 
-# ✅ NEW TASK CHANNEL TABLE
+# Create task_channels table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS task_channels(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
