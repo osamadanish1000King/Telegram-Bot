@@ -4,14 +4,13 @@ from telegram import *
 from telegram.ext import *
 
 TOKEN = "8279973060:AAGp9bxREyPd29xzv85mcWvTA33WIltyi3A"
-ADMIN_ID = 8459166394
-BOT_USERNAME = "Afghan_star_bot"
+ADMIN_ID = 8279973060
+BOT_USERNAME = "Afghan_starbot"
 
 # ================= DATABASE =================
 conn = sqlite3.connect("bot.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# Create users table if it doesn't exist
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
 id INTEGER PRIMARY KEY,
@@ -24,7 +23,6 @@ last_weekly TEXT
 )
 """)
 
-# Create withdrawals table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS withdrawals(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +34,6 @@ date TEXT
 )
 """)
 
-# Create channels table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS channels(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +41,7 @@ username TEXT
 )
 """)
 
-# Create task_channels table
+# ✅ NEW TASK CHANNEL TABLE
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS task_channels(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,10 +54,10 @@ conn.commit()
 # ================= KEYBOARDS =================
 def main_kb():
     return ReplyKeyboardMarkup([
-        ["📊 Statistics", "💸 Withdraw"],
-        ["👥 Referral", "💰 Balance"],
-        ["💼 Set Wallet", "📋 Tasks"],
-        ["🎁 Bonus", "📜 Terms"]
+        ["📊 Statistics"],
+        ["👥 Referral", "💰 Balance", "🎁 Bonus"],
+        ["💼 Set Wallet", "💸 Withdraw"],
+        ["📋 Tasks", "📜 Terms"]
     ], resize_keyboard=True)
 
 def admin_kb():
@@ -221,22 +218,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("✅ Deleted", reply_markup=admin_kb())
 
     # ===== USER =====
-    if text == "📊 Statistics":
-        cursor.execute("SELECT * FROM users WHERE id=?", (uid,))
-        user = cursor.fetchone()
-
-        if user:
-            user_name = update.effective_user.full_name
-            user_id = user[0]
-            user_balance = user[1]
-
-            await update.message.reply_text(f"""
-🤵🏻‍♂️استعمالوونکی = {user_name}
-💳 ایډي کارن = {user_id}
-🌟ستاسو دسټاراندازه = {user_balance}
-🔗 د بیلانس زیاتولو لپاره [ 👫 کسان ] دعوت کړی،
-""")
-
     if text == "📋 Tasks":
         cursor.execute("SELECT username FROM task_channels")
         channels = cursor.fetchall()
@@ -257,6 +238,21 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(buttons)
         )
 
+    if text == "📊 Statistics":
+        cursor.execute("SELECT balance FROM users WHERE id=?", (uid,))
+        row = cursor.fetchone()
+        balance = row[0] if row else 0
+        name = update.effective_user.first_name or "User"
+        await update.message.reply_text(
+f"""🤵🏻‍♂️استعمالوونکی = {name}
+
+💳 ایډي کارن : {uid}
+🌟ستاسو دسټاراندازه= {balance}
+
+🔗 د بیلانس زیاتولو لپاره  [ 👫 کسان ] دعوت کړی،""",
+            reply_markup=main_kb()
+        )
+
 # ================= RUN =================
 app = Application.builder().token(TOKEN).build()
 
@@ -264,7 +260,7 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("admin", admin_panel))
 app.add_handler(CallbackQueryHandler(check_join, pattern="check_join"))
 app.add_handler(CallbackQueryHandler(check_tasks, pattern="check_tasks"))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler))
+app.add_handler(MessageHandler(filters.TEXT & \~filters.COMMAND, handler))
 
 print("✅ BOT RUNNING...")
 app.run_polling()
