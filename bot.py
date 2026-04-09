@@ -1,27 +1,38 @@
 import sqlite3
 import datetime
-import asyncio
 from telegram import *
 from telegram.ext import *
 
 TOKEN = "8414495176:AAHt30wZaH4ScvdJG4L7Oi6NNJ0pDP_NmcU"
 ADMIN_ID = 8289491009
 BOT_USERNAME = "Earn_FreeAfghani_Bot"
-CHANNEL_ID = "@earnFreeafghanibot_channel"
 
 DAILY = 0.5
 WEEKLY = 5
 INVITE = 2
 TASK_REWARD = 0.3
 
-# ================= DATABASE =================
+# ================= DB =================
 conn = sqlite3.connect("bot.db", check_same_thread=False)
 cur = conn.cursor()
 
 cur.execute("CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, balance REAL DEFAULT 0, phone TEXT, last_daily TEXT, last_weekly TEXT)")
-cur.execute("CREATE TABLE IF NOT EXISTS withdraw(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, amount REAL, status TEXT)")
 cur.execute("CREATE TABLE IF NOT EXISTS tasks(username TEXT)")
+cur.execute("CREATE TABLE IF NOT EXISTS stats(day TEXT, fake INTEGER)")
 conn.commit()
+
+# ================= FAKE USERS =================
+def fake_users():
+    today = str(datetime.date.today())
+    cur.execute("SELECT fake FROM stats WHERE day=?", (today,))
+    row = cur.fetchone()
+
+    if not row:
+        cur.execute("INSERT INTO stats VALUES(?,?)", (today, 1000))
+        conn.commit()
+        return 1000
+    else:
+        return row[0]
 
 # ================= KEYBOARDS =================
 def main_kb():
@@ -29,7 +40,8 @@ def main_kb():
         ["📊 حالت"],
         ["👥 دعوت","💰 پیسې زیاتول"],
         ["📱 شمېره ثبت","⚡ ایزي لوډ"],
-        ["🤖 د رباټ په اړه"]
+        ["🤖 د رباټ په اړه"],
+        ["👑 Admin Panel"]
     ],resize_keyboard=True)
 
 def money_kb():
@@ -46,9 +58,10 @@ def bonus_kb():
 
 def admin_kb():
     return ReplyKeyboardMarkup([
-        ["📢 Broadcast","💸 Withdraw"],
-        ["➕ Add Task"],
-        ["🔙 Back"]
+        ["👥 ټول یوزران"],
+        ["📢 برودکاست"],
+        ["➕ ټاسک چینل"],
+        ["🔙 شاته"]
     ],resize_keyboard=True)
 
 # ================= USER =================
@@ -60,57 +73,89 @@ def get_user(uid):
 
 # ================= START =================
 async def start(update,context):
-    uid=update.effective_user.id
+    uid = update.effective_user.id
     get_user(uid)
 
+    # referral
     if context.args:
         try:
-            ref=int(context.args[0])
-            if ref!=uid:
+            ref = int(context.args[0])
+            if ref != uid:
                 cur.execute("UPDATE users SET balance=balance+? WHERE id=?", (INVITE,ref))
                 conn.commit()
 
-                await context.bot.send_message(ref,"🎉 نوی کس راغی +2 AF")
+                await context.bot.send_message(ref,"🎉 نوی یوزر راغی +2 AF")
                 await context.bot.send_message(ADMIN_ID,f"👤 New User: {uid}")
         except: pass
 
-    await update.message.reply_text("🌟 ښه راغلاست!",reply_markup=main_kb())
+    await update.message.reply_text(
+"""🌟 ښه راغلاست!
+
+💰 دلته تاسو کولای شئ پیسې وګټئ:
+👥 د دعوت له لارې
+📋 ټاسک ترسره کولو سره
+🎁 بونس اخیستلو سره
+
+👇 پیل وکړئ""",
+reply_markup=main_kb()
+)
 
 # ================= MAIN =================
 async def handler(update,context):
-    uid=update.effective_user.id
-    text=update.message.text
+    uid = update.effective_user.id
+    text = update.message.text
     get_user(uid)
 
     # 📊 حالت
     if text=="📊 حالت":
         cur.execute("SELECT balance FROM users WHERE id=?", (uid,))
-        bal=cur.fetchone()[0]
+        bal = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM users")
+        real = cur.fetchone()[0]
+
+        fake = fake_users()
+        total = real + fake
 
         await update.message.reply_text(
-f"""🤵🏻‍♂️استعمالوونکی = {update.effective_user.first_name}
-💳 ID = {uid}
-💵 Balance = {bal} AF"""
+f"""🤵🏻‍♂️ {update.effective_user.first_name}
+🆔 {uid}
+
+💰 بیلانس: {bal} AF
+
+👥 ټول یوزران: {total}
+
+🔗 د بیلانس زیاتولو لپاره:
+👥 خپل لینک شریک کړئ👇
+
+https://t.me/{BOT_USERNAME}?start={uid}
+
+💸 هر دعوت = {INVITE} AF"""
         )
 
     # 👥 دعوت
     elif text=="👥 دعوت":
         await update.message.reply_text(
-f"https://t.me/{BOT_USERNAME}?start={uid}"
+f"""🔗 ستاسو لینک:
+
+https://t.me/{BOT_USERNAME}?start={uid}
+
+💰 هر کس = {INVITE} AF
+
+📢 لینک خپلو ملګرو سره شریک کړئ او عاید ترلاسه کړئ!"""
         )
 
     # 💰 پیسې زیاتول
     elif text=="💰 پیسې زیاتول":
         await update.message.reply_text("انتخاب:",reply_markup=money_kb())
 
-    # 🔙 back
     elif text=="🔙 شاته":
         await update.message.reply_text("🏠",reply_markup=main_kb())
 
     # ================= TASK =================
     elif text=="📋 ټاسک":
         cur.execute("SELECT username FROM tasks")
-        data=cur.fetchall()
+        data = cur.fetchall()
 
         if not data:
             await update.message.reply_text("❌ ټاسک نشته")
@@ -138,7 +183,7 @@ f"https://t.me/{BOT_USERNAME}?start={uid}"
         else:
             cur.execute("UPDATE users SET balance=balance+?, last_daily=? WHERE id=?", (DAILY,today,uid))
             conn.commit()
-            await update.message.reply_text("✅ ورکړل شو")
+            await update.message.reply_text(f"✅ {DAILY} AF اضافه شول")
 
     elif text=="🔥 اوونیز بونس":
         week=str(datetime.date.today().isocalendar()[1])
@@ -150,40 +195,21 @@ f"https://t.me/{BOT_USERNAME}?start={uid}"
         else:
             cur.execute("UPDATE users SET balance=balance+?, last_weekly=? WHERE id=?", (WEEKLY,week,uid))
             conn.commit()
-            await update.message.reply_text("✅ ورکړل شو")
-
-    # ================= PHONE =================
-    elif text=="📱 شمېره ثبت":
-        await update.message.reply_text("شمېره ولیکه:")
-        context.user_data["phone"]=True
-
-    elif context.user_data.get("phone"):
-        if len(text)>=10:
-            cur.execute("UPDATE users SET phone=? WHERE id=?", (text,uid))
-            conn.commit()
-            await update.message.reply_text("✅ ثبت شو")
-        else:
-            await update.message.reply_text("❌ نمبر غلط دی")
-        context.user_data["phone"]=False
-
-    # ================= WITHDRAW =================
-    elif text=="⚡ ایزي لوډ":
-        cur.execute("SELECT balance FROM users WHERE id=?", (uid,))
-        bal=cur.fetchone()[0]
-
-        if bal<50:
-            await update.message.reply_text("❌ 50 AF پکار دي")
-        else:
-            cur.execute("INSERT INTO withdraw(user_id,amount,status) VALUES(?,?,?)",(uid,bal,"pending"))
-            conn.commit()
-            await update.message.reply_text("✅ Request واستول شو")
+            await update.message.reply_text(f"✅ {WEEKLY} AF اضافه شول")
 
     # ================= ADMIN =================
-    elif text=="/admin":
+    elif text=="👑 Admin Panel" or text=="/admin":
         if uid==ADMIN_ID:
-            await update.message.reply_text("👑 Admin",reply_markup=admin_kb())
+            await update.message.reply_text("👑 Admin Panel",reply_markup=admin_kb())
+        else:
+            await update.message.reply_text("❌ ته اډمین نه یې")
 
-    elif text=="📢 Broadcast" and uid==ADMIN_ID:
+    elif text=="👥 ټول یوزران" and uid==ADMIN_ID:
+        cur.execute("SELECT COUNT(*) FROM users")
+        count = cur.fetchone()[0]
+        await update.message.reply_text(f"👥 Real Users: {count}")
+
+    elif text=="📢 برودکاست" and uid==ADMIN_ID:
         await update.message.reply_text("پیغام ولیکه:")
         context.user_data["bc"]=True
 
@@ -199,7 +225,7 @@ f"https://t.me/{BOT_USERNAME}?start={uid}"
         await update.message.reply_text("✅ واستول شو")
         context.user_data["bc"]=False
 
-    elif text=="➕ Add Task" and uid==ADMIN_ID:
+    elif text=="➕ ټاسک چینل" and uid==ADMIN_ID:
         await update.message.reply_text("username ولیکه:")
         context.user_data["task"]=True
 
@@ -216,10 +242,8 @@ async def callback(update,context):
 
     if q.data=="task_done":
         uid=q.from_user.id
-
         cur.execute("UPDATE users SET balance=balance+? WHERE id=?", (TASK_REWARD,uid))
         conn.commit()
-
         await q.message.reply_text("🎉 Reward ورکړل شو")
 
 # ================= RUN =================
@@ -229,5 +253,5 @@ app.add_handler(CommandHandler("start",start))
 app.add_handler(CallbackQueryHandler(callback))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND,handler))
 
-print("🔥 LEVEL 3 PERFECT BOT RUNNING...")
+print("🔥 LEVEL 4 BOT RUNNING PERFECT...")
 app.run_polling()
