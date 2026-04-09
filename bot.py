@@ -1,15 +1,17 @@
 import sqlite3
+import datetime
 from telegram import *
 from telegram.ext import *
 
 TOKEN = "8279973060:AAGp9bxREyPd29xzv85mcWvTA33WIltyi3A"
-ADMIN_ID = 8459166394
+ADMIN_ID = 8289491009
 BOT_USERNAME = "Afghan_starbot"
 
 # ================= DATABASE =================
 conn = sqlite3.connect("bot.db", check_same_thread=False)
 cursor = conn.cursor()
 
+# Create users table if it doesn't exist
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
 id INTEGER PRIMARY KEY,
@@ -22,6 +24,7 @@ last_weekly TEXT
 )
 """)
 
+# Create withdrawals table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS withdrawals(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,6 +36,7 @@ date TEXT
 )
 """)
 
+# Create channels table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS channels(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,6 +44,7 @@ username TEXT
 )
 """)
 
+# Create task_channels table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS task_channels(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,10 +57,10 @@ conn.commit()
 # ================= KEYBOARDS =================
 def main_kb():
     return ReplyKeyboardMarkup([
-        ["📊 Statistics"],
-        ["⭐ Increase Stars", "🎁 Bonus", "👥 Referral"],
-        ["💼 Set Wallet", "💸 Withdraw"],
-        ["📋 Tasks", "📜 Terms"]
+        ["📊 Statistics", "💸 Withdraw"],
+        ["👥 Referral", "💰 Balance"],
+        ["💼 Set Wallet", "📋 Tasks"],
+        ["🎁 Bonus", "📜 Terms"]
     ], resize_keyboard=True)
 
 def admin_kb():
@@ -89,7 +94,7 @@ async def force_join(update, context):
         ch = ch[0]
         try:
             member = await context.bot.get_chat_member(ch, uid)
-            if member.status not in ["member", "administrator", "creator"]:
+            if member.status not in ["member","administrator","creator"]:
                 buttons.append([InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{ch.replace('@','')}")])
         except:
             buttons.append([InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{ch.replace('@','')}")])
@@ -110,18 +115,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     get_user(uid)
 
+    # Referral
     if args:
-        try:
-            ref = int(args[0])
-            if ref != uid:
-                cursor.execute("SELECT invited_by FROM users WHERE id=?", (uid,))
-                if cursor.fetchone()[0] is None:
-                    cursor.execute("UPDATE users SET invited_by=? WHERE id=?", (ref, uid))
-                    cursor.execute("UPDATE users SET balance=balance+2 WHERE id=?", (ref,))
-                    conn.commit()
+        ref = int(args[0])
+        if ref != uid:
+            cursor.execute("SELECT invited_by FROM users WHERE id=?", (uid,))
+            if cursor.fetchone()[0] is None:
+                cursor.execute("UPDATE users SET invited_by=? WHERE id=?", (ref, uid))
+                cursor.execute("UPDATE users SET balance=balance+2 WHERE id=?", (ref,))
+                conn.commit()
+                try:
                     await context.bot.send_message(ref, "🎉 New referral joined! +2 ⭐")
-        except:
-            pass
+                except:
+                    pass
 
     if not await force_join(update, context):
         return
@@ -134,7 +140,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🔥 Weekly = 2 ⭐
 💸 Withdraw = 20 ⭐
 
-👇 Use menu below:""",
+👇 Use menu:""",
         reply_markup=main_kb()
     )
 
@@ -157,11 +163,12 @@ async def check_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     channels = cursor.fetchall()
 
     success = True
+
     for ch in channels:
         ch = ch[0]
         try:
             member = await context.bot.get_chat_member(ch, uid)
-            if member.status not in ["member", "administrator", "creator"]:
+            if member.status not in ["member","administrator","creator"]:
                 success = False
         except:
             success = False
@@ -171,26 +178,7 @@ async def check_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.commit()
         await query.message.reply_text("🎉 +0.3 ⭐ added!")
     else:
-        await query.message.reply_text("❌ Join all task channels first!")
-
-# ================= STATISTICS =================
-async def show_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.effective_user.id
-    get_user(uid)
-
-    cursor.execute("SELECT balance FROM users WHERE id=?", (uid,))
-    balance = cursor.fetchone()[0]
-
-    name = update.effective_user.first_name or "User"
-
-    text = f"""🤵🏻‍♂️استعمالوونکی = {name}
-
-💳 ایډي کارن : {uid}
-🌟ستاسو دسټاراندازه= {balance}
-
-🔗 د بیلانس زیاتولو لپاره  [ 👫 کسان ] دعوت کړی،"""
-
-    await update.message.reply_text(text, reply_markup=main_kb())
+        await query.message.reply_text("❌ Join all task channels")
 
 # ================= ADMIN =================
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -198,7 +186,7 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("❌ Not Admin")
     await update.message.reply_text("⚙️ Admin Panel", reply_markup=admin_kb())
 
-# ================= MAIN HANDLER =================
+# ================= HANDLER =================
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     uid = update.effective_user.id
@@ -209,42 +197,52 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not await force_join(update, context):
             return
 
-    # ADMIN COMMANDS
+    # ===== ADMIN =====
     if uid == ADMIN_ID:
+
         if text == "➕ Add Task Channel":
             context.user_data["add_task"] = True
-            await update.message.reply_text("Send @channel username:")
-            return
+            await update.message.reply_text("Send @channel")
 
         elif context.user_data.get("add_task"):
             cursor.execute("INSERT INTO task_channels(username) VALUES(?)", (text,))
             conn.commit()
             context.user_data["add_task"] = False
-            await update.message.reply_text("✅ Task Channel Added", reply_markup=admin_kb())
-            return
+            await update.message.reply_text("✅ Added", reply_markup=admin_kb())
 
         elif text == "➖ Delete Task Channel":
             context.user_data["del_task"] = True
-            await update.message.reply_text("Send channel username to delete:")
-            return
+            await update.message.reply_text("Send channel")
 
         elif context.user_data.get("del_task"):
             cursor.execute("DELETE FROM task_channels WHERE username=?", (text,))
             conn.commit()
             context.user_data["del_task"] = False
-            await update.message.reply_text("✅ Task Channel Deleted", reply_markup=admin_kb())
-            return
+            await update.message.reply_text("✅ Deleted", reply_markup=admin_kb())
 
-    # USER COMMANDS
+    # ===== USER =====
     if text == "📊 Statistics":
-        await show_statistics(update, context)
+        cursor.execute("SELECT * FROM users WHERE id=?", (uid,))
+        user = cursor.fetchone()
 
-    elif text == "📋 Tasks":
+        if user:
+            user_name = update.effective_user.full_name
+            user_id = user[0]
+            user_balance = user[1]
+
+            await update.message.reply_text(f"""
+🤵🏻‍♂️استعمالوونکی = {user_name}
+💳 ایډي کارن = {user_id}
+🌟ستاسو دسټاراندازه = {user_balance}
+🔗 د بیلانس زیاتولو لپاره [ 👫 کسان ] دعوت کړی،
+""")
+
+    if text == "📋 Tasks":
         cursor.execute("SELECT username FROM task_channels")
         channels = cursor.fetchall()
 
         if not channels:
-            await update.message.reply_text("❌ No tasks available right now")
+            await update.message.reply_text("❌ No tasks available")
             return
 
         buttons = []
@@ -255,18 +253,18 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons.append([InlineKeyboardButton("✅ Check Tasks", callback_data="check_tasks")])
 
         await update.message.reply_text(
-            "📋 Complete the tasks to earn stars:",
+            "📋 Complete tasks:",
             reply_markup=InlineKeyboardMarkup(buttons)
         )
 
-# ================= RUN BOT =================
+# ================= RUN =================
 app = Application.builder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("admin", admin_panel))
 app.add_handler(CallbackQueryHandler(check_join, pattern="check_join"))
 app.add_handler(CallbackQueryHandler(check_tasks, pattern="check_tasks"))
-app.add_handler(MessageHandler(filters.TEXT & \~filters.COMMAND, handler))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler))
 
-print("✅ BOT RUNNING SUCCESSFULLY...")
+print("✅ BOT RUNNING...")
 app.run_polling()
