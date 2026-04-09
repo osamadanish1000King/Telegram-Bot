@@ -76,7 +76,6 @@ async def start(update,context):
     uid = update.effective_user.id
     get_user(uid)
 
-    # referral
     if context.args:
         try:
             ref = int(context.args[0])
@@ -86,7 +85,8 @@ async def start(update,context):
 
                 await context.bot.send_message(ref,"🎉 نوی یوزر راغی +2 AF")
                 await context.bot.send_message(ADMIN_ID,f"👤 New User: {uid}")
-        except: pass
+        except:
+            pass
 
     await update.message.reply_text(
 """🌟 ښه راغلاست!
@@ -102,8 +102,14 @@ reply_markup=main_kb()
 
 # ================= MAIN =================
 async def handler(update,context):
+
+    # ✅ FIX 1: د crash مخنیوی
+    if not update.message:
+        return
+
     uid = update.effective_user.id
-    text = update.message.text
+    text = update.message.text.strip()
+
     get_user(uid)
 
     # 📊 حالت
@@ -198,7 +204,7 @@ https://t.me/{BOT_USERNAME}?start={uid}
             await update.message.reply_text(f"✅ {WEEKLY} AF اضافه شول")
 
     # ================= ADMIN =================
-    elif text=="👑 Admin Panel" or text=="/admin":
+    elif text.strip() in ["👑 Admin Panel", "/admin"]:
         if uid==ADMIN_ID:
             await update.message.reply_text("👑 Admin Panel",reply_markup=admin_kb())
         else:
@@ -213,14 +219,15 @@ https://t.me/{BOT_USERNAME}?start={uid}
         await update.message.reply_text("پیغام ولیکه:")
         context.user_data["bc"]=True
 
-    elif context.user_data.get("bc") and uid==ADMIN_ID:
+    elif context.user_data.get("bc", False) and uid==ADMIN_ID:
         cur.execute("SELECT id FROM users")
         users=cur.fetchall()
 
         for u in users:
             try:
                 await context.bot.send_message(u[0],text)
-            except: pass
+            except:
+                pass
 
         await update.message.reply_text("✅ واستول شو")
         context.user_data["bc"]=False
@@ -229,7 +236,7 @@ https://t.me/{BOT_USERNAME}?start={uid}
         await update.message.reply_text("username ولیکه:")
         context.user_data["task"]=True
 
-    elif context.user_data.get("task") and uid==ADMIN_ID:
+    elif context.user_data.get("task", False) and uid==ADMIN_ID:
         cur.execute("INSERT INTO tasks(username) VALUES(?)",(text,))
         conn.commit()
         await update.message.reply_text("✅ اضافه شو")
