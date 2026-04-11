@@ -148,11 +148,30 @@ async def handler(update,context):
 
     get_user(uid,name)
 
+    # ===== CONTACT HANDLING (مهم اصلاح) =====
+    if update.message.contact:
+        phone = update.message.contact.phone_number
+        cur.execute("UPDATE users SET phone=? WHERE id=?", (phone, uid))
+        conn.commit()
+        await update.message.reply_text("✅ شمېره ثبت شوه!", reply_markup=main_kb())
+        return
+
+    if not update.message.text:
+        return
+
+    text=update.message.text
+
+    # ===== ADMIN ACCESS =====
+    if text == "/admin" and uid == ADMIN_ID:
+        await update.message.reply_text("🛠 ادمین پینل", reply_markup=admin_kb())
+        return
+
+    # Force Join Check
     cur.execute("SELECT link FROM forcejoin")
     links=[i[0] for i in cur.fetchall()]
     not_joined=[l for l in links if not await is_joined(uid,context.bot,l)]
 
-    if not_joined:
+    if not_joined and uid != ADMIN_ID:
         await update.message.reply_text("❗ مخکې چینل جواین کړه",reply_markup=force_join_btn(not_joined))
         return
 
@@ -160,8 +179,6 @@ async def handler(update,context):
     cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
     real_balance,inv = cur.fetchone()
     fake_balance = int(real_balance*3+20)
-
-    text=update.message.text
 
     if text=="🔙 وتل":
         await update.message.reply_text("🏠",reply_markup=main_kb())
