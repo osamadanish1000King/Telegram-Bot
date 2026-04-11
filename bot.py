@@ -145,14 +145,43 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
-        
+
     uid = update.effective_user.id
     name = update.effective_user.first_name
     get_user(uid, name)
 
     text = update.message.text if update.message.text else ""
+
+    # ===== FORCE JOIN CHECK =====
+    link = get_setting("force_join") ✅
+    if link:
+        joined = await is_joined(uid, context.bot, link)
+        if not joined:
+            await update.message.reply_text(
+                "❗ مهرباني وکړه چینل جواین کړه",
+                reply_markup=force_join_btn(link)
+            )
+            return
+
+# ===== TASK =====
+if text == "📢 ټاسک":
+    link = get_setting("task")
+
+    if not link:
+        await update.message.reply_text("❌ ټاسک نشته")
+        return
+
+    await update.message.reply_text(
+        "📢 مهرباني وکړه ټاسک ترسره کړه 👇",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 چینل", url=link)],
+            [InlineKeyboardButton("✅ Done", callback_data="done_task")]
+        ])
+    )
+
+# ===== USER INFO =====
     # ===== USER INFO =====
-    if text == "❗ خپل حساب معلومات":
+    elif text == "❗ خپل حساب معلومات":
         cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
         data = cur.fetchone()
 
@@ -168,6 +197,7 @@ f"""💳 کارن = {name}
 👥 دعوتونه = {invites}"""
         )
 
+    
     # ===== INVITE =====
     elif text == "👥 ملګري دعوت کول":
         cur.execute("SELECT invites FROM users WHERE id=?", (uid,))
@@ -259,12 +289,6 @@ f"""💳 نوی ایزیلوډ درخواست
             f"👥 کاروونکي: {fake}\n🔗 {CHANNEL_LINK}"
         )
 
-    elif text == "❗ خپل حساب معلومات":
-        cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
-        data = cur.fetchone()
-        balance = data[0] if data else 0
-        invites = data[1] if data else 0
-
         link = f"https://t.me/{BOT_USERNAME}?start={uid}"
 
         await update.message.reply_text(
@@ -318,10 +342,6 @@ f"""💳 نوی ایزیلوډ درخواست
                         (WEEKLY_REWARD,datetime.datetime.now().isoformat(),uid))
             conn.commit()
             await update.message.reply_text("🎉 5 AFN")
-
-    elif text == "👥 ملګري دعوت کول":
-        link = f"https://t.me/{BOT_USERNAME}?start={uid}"
-        await update.message.reply_text(link)
 
     elif text == "📢 ټاسک":
         await update.message.reply_text("📢 Task نشته")
