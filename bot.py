@@ -70,16 +70,20 @@ def invite_kb():
 
 def phone_kb():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("📲 شمېره واستوه",request_contact=True)]
-    ],resize_keyboard=True)
-
-def admin_kb():
-    return ReplyKeyboardMarkup([
-        ["📢 نشر پیغام"],
-        ["💰 پیسې زیاتول"],
-        ["📊 احصایه"],
+        [KeyboardButton("📲 شمېره واستوه",request_contact=True)],
         ["🔙 وتل"]
     ],resize_keyboard=True)
+
+# ===== ADMIN INLINE PANEL =====
+def admin_panel():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Broadcast",callback_data="bc")],
+        [InlineKeyboardButton("➕ Force Join Add",callback_data="fja"),
+         InlineKeyboardButton("➖ Force Join Del",callback_data="fjd")],
+        [InlineKeyboardButton("➕ Task Add",callback_data="ta"),
+         InlineKeyboardButton("➖ Task Del",callback_data="td")],
+        [InlineKeyboardButton("📊 Stats",callback_data="stats")]
+    ])
 
 # ===== START =====
 async def start(update,context):
@@ -95,23 +99,40 @@ async def start(update,context):
 
     get_user(uid,name,ref)
 
+    # invite reward + notify
     if ref and ref!=uid:
         cur.execute("UPDATE users SET balance=balance+?,invites=invites+1 WHERE id=?",(INVITE_REWARD,ref))
         conn.commit()
+        await context.bot.send_message(ref,"🎉 یو کس دې راوست\n💰 4 افغانۍ اضافه شوه")
 
+    # admin notify
     await context.bot.send_message(ADMIN_ID,f"👤 نوی یوزر:\n{name}\n{uid}")
+
     await update.message.reply_text("ښه راغلاست 👋",reply_markup=main_kb())
 
 # ===== HANDLER =====
 async def handler(update,context):
     uid=update.effective_user.id
     name=update.effective_user.first_name
-    text=update.message.text
 
     get_user(uid,name)
 
+    # ===== CONTACT SAVE =====
+    if update.message.contact:
+        phone=update.message.contact.phone_number
+        cur.execute("UPDATE users SET phone=? WHERE id=?", (phone,uid))
+        conn.commit()
+        await update.message.reply_text("✅ شمېره ثبت شوه",reply_markup=main_kb())
+        return
+
+    text=update.message.text
+
+    # ===== BACK =====
+    if text=="🔙 وتل":
+        await update.message.reply_text("🏠 اصلي مېنو",reply_markup=main_kb())
+
     # ===== INFO =====
-    if text=="❗ خپل حساب معلومات":
+    elif text=="❗ خپل حساب معلومات":
         cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
         bal,inv=cur.fetchone()
 
@@ -125,13 +146,13 @@ f"""👤 {name}
 
     # ===== PHONE =====
     elif text=="📞 شمېره ثبت کړی":
-        await update.message.reply_text("شمېره واستوه 👇",reply_markup=phone_kb())
+        await update.message.reply_text("شمېره واستوه 👇 یا ولیکه",reply_markup=phone_kb())
 
-    elif update.message.contact:
-        phone=update.message.contact.phone_number
-        cur.execute("UPDATE users SET phone=? WHERE id=?", (phone,uid))
+    # manual phone
+    elif text.startswith("07") or text.startswith("+93"):
+        cur.execute("UPDATE users SET phone=? WHERE id=?", (text,uid))
         conn.commit()
-        await update.message.reply_text("✅ ثبت شوه")
+        await update.message.reply_text("✅ شمېره ثبت شوه",reply_markup=main_kb())
 
     # ===== INVITE MENU =====
     elif text=="💰 افغانۍ زیاتول":
@@ -226,14 +247,8 @@ f"""📊 معلومات
         )
 
     # ===== ADMIN =====
-    elif text=="/admin":
-        if uid==ADMIN_ID:
-            await update.message.reply_text("Admin Panel 👑",reply_markup=admin_kb())
-
-    elif text=="📊 احصایه" and uid==ADMIN_ID:
-        cur.execute("SELECT COUNT(*) FROM users")
-        users=cur.fetchone()[0]
-        await update.message.reply_text(f"👥 ټول یوزران: {users}")
+    elif text=="/admin" and uid==ADMIN_ID:
+        await update.message.reply_text("👑 Admin Panel",reply_markup=admin_panel())
 
 # ===== RUN =====
 app=Application.builder().token(TOKEN).build()
