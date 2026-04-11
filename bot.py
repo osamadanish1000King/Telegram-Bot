@@ -151,6 +151,65 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     get_user(uid, name)
 
     text = update.message.text if update.message.text else ""
+    # ===== USER INFO =====
+    if text == "❗ خپل حساب معلومات":
+        cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
+        data = cur.fetchone()
+
+        balance = data[0] if data else 0
+        invites = data[1] if data else 0
+
+        await update.message.reply_text(
+f"""💳 کارن = {name}
+
+🆔 {uid}
+
+💰 بیلانس = {balance} افغانۍ
+👥 دعوتونه = {invites}"""
+        )
+
+    # ===== INVITE =====
+    elif text == "👥 ملګري دعوت کول":
+        cur.execute("SELECT invites FROM users WHERE id=?", (uid,))
+        invites = cur.fetchone()[0]
+
+        link = f"https://t.me/{BOT_USERNAME}?start={uid}"
+
+        await update.message.reply_text(
+f"""👥 ستا دعوت: {invites}
+
+🔗 لینک:
+{link}
+
+🎁 هر دعوت = {INVITE_REWARD} افغانۍ"""
+        )
+
+    # ===== EASYLOAD =====
+    elif text == "🏦 ایزیلوډ":
+        cur.execute("SELECT balance FROM users WHERE id=?", (uid,))
+        balance = cur.fetchone()[0]
+
+        if balance < 50:
+            await update.message.reply_text("❌ لږ تر لږه 50 افغانۍ پکار دي")
+        else:
+            await update.message.reply_text(
+f"""💳 د ایزیلوډ غوښتنه ثبت شوه
+
+👤 {name}
+🆔 {uid}
+💰 {balance} AFN
+
+⏳ مهرباني وکړئ انتظار وباسئ"""
+            )
+
+            await context.bot.send_message(
+                ADMIN_ID,
+f"""💳 نوی ایزیلوډ درخواست
+
+👤 {name}
+🆔 {uid}
+💰 {balance} AFN"""
+)
 
     # ===== ADMIN =====
     if text == "/admin" and uid == ADMIN_ID:
