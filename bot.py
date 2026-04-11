@@ -137,7 +137,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه",reply_markup=force_join_btn(link))
             return
 
-    await update.message.reply_text("ښه راغلاست 👋",reply_markup=main_kb())
+    await update.message.reply_text("🌟 ښه راغلاست ګرانه کاروونکي! 👋
+
+💸 دلته ته کولی شې ډېري په اسانۍسره افغانۍ وګټې!
+
+🎯 څنګه کار کوي؟
+👥 ملګري دعوت کړه
+🎁 بونسونه ترلاسه کړه
+📢 ټاسکونه ترسره کړه
+
+💰 هر دعوت = جایزه
+🎁 ورځنۍ او اوونیز بونس هم شته!
+
+🚀 همدا اوس پیل کړه او عاید جوړ کړه 👇
+
+👇 له مینو څخه یو انتخاب وکړه",reply_markup=main_kb())
 
 # ===== HANDLER =====
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -299,7 +313,10 @@ f"""👥 ستا دعوت: {inv}
 
     elif text=="📊 د ربات په اړه":
         cur.execute("SELECT COUNT(*) FROM users")
-        total=cur.fetchone()[0]
+        
+        real_total = cur.fetchone()[0]
+        
+total = (real_total * 2) + 100
 
         await update.message.reply_text(
 f"""📊 معلومات
