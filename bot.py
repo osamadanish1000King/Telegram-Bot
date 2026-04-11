@@ -106,40 +106,62 @@ async def is_joined(user_id, bot, link):
         return False
 
 # ===== START =====
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid=update.effective_user.id
-    name=update.effective_user.first_name
+    async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
 
-    ref=None
+    uid = update.effective_user.id
+    name = update.effective_user.first_name
+
+    # 🔗 referral
+    ref = None
     if context.args:
         try:
-            ref=int(context.args[0])
+            ref = int(context.args[0])
         except:
-            pass
+            ref = None
 
+    # 👤 user check
     cur.execute("SELECT * FROM users WHERE id=?", (uid,))
     exists = cur.fetchone()
 
     if not exists:
-        get_user(uid,name,ref)
+        get_user(uid, name, ref)
 
-        if ref and ref!=uid:
-            cur.execute("UPDATE users SET balance=balance+?,invites=invites+1 WHERE id=?",(INVITE_REWARD,ref))
+        if ref and ref != uid:
+            cur.execute(
+                "UPDATE users SET balance=balance+?,invites=invites+1 WHERE id=?",
+                (INVITE_REWARD, ref)
+            )
             conn.commit()
-            await context.bot.send_message(ref,"🎉 یو کس دې راوست\n💰 4 افغانۍ اضافه شوه")
 
-    await context.bot.send_message(ADMIN_ID,f"👤 نوی یوزر:\n{name}\n{uid}")
+            await context.bot.send_message(
+                ref,
+                "🎉 یو کس دې راوست\n💰 4 افغانۍ اضافه شوه"
+            )
 
+    # 👤 admin notify
+    await context.bot.send_message(
+        ADMIN_ID,
+        f"👤 نوی یوزر:\n{name}\n{uid}"
+    )
+
+    # 🔒 force join
     link = context.bot_data.get("force_join")
     if link:
         joined = await is_joined(uid, context.bot, link)
         if not joined:
-            await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه",reply_markup=force_join_btn(link))
+            await update.message.reply_text(
+                "❗ مهرباني وکړه چینل جواین کړه",
+                reply_markup=force_join_btn(link)
+            )
             return
 
-    await update.message.reply_text("""🌟 ښه راغلاست ګرانه کاروونکي! 👋
+    # 🌟 welcome message
+    await update.message.reply_text(
+        """🌟 ښه راغلاست ګرانه کاروونکي! 👋
 
-💸 دلته ته کولی شې ډېري په اسانۍسره افغانۍ وګټې!
+💸 دلته ته کولی شې ډېري په اسانۍ سره افغانۍ وګټې!
 
 🎯 څنګه کار کوي؟
 👥 ملګري دعوت کړه
@@ -151,13 +173,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 🚀 همدا اوس پیل کړه او عاید جوړ کړه 👇
 
-👇 له مینو څخه یو انتخاب وکړه""",reply_markup=main_kb())
+👇 له مینو څخه یو انتخاب وکړه""",
+        reply_markup=main_kb()
+    )
+
 
 # ===== HANDLER =====
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
-
+        
     uid=update.effective_user.id
     name=update.effective_user.first_name
     get_user(uid,name)
