@@ -32,8 +32,7 @@ def fake_users():
         cur.execute("INSERT INTO stats VALUES(?,?)", (today, 1000))
         conn.commit()
         return 1000
-    else:
-        return row[0]
+    return row[0]
 
 # ================= KEYBOARDS =================
 def main_kb():
@@ -125,17 +124,7 @@ async def start(update,context):
         except:
             pass
 
-    await update.message.reply_text(
-"""🌟 ښه راغلاست!
-
-💰 دلته تاسو کولای شئ پیسې وګټئ:
-👥 د دعوت له لارې
-📋 ټاسک ترسره کولو سره
-🎁 بونس اخیستلو سره
-
-👇 پیل وکړئ""",
-reply_markup=main_kb()
-)
+    await update.message.reply_text("🌟 ښه راغلاست!",reply_markup=main_kb())
 
 # ================= MAIN =================
 async def handler(update,context):
@@ -159,15 +148,13 @@ async def handler(update,context):
         cur.execute("SELECT COUNT(*) FROM users")
         real = cur.fetchone()[0]
 
-        fake = fake_users()
-        total = real + fake
+        total = real + fake_users()
 
         await update.message.reply_text(
 f"""🤵🏻‍♂️ {update.effective_user.first_name}
 🆔 {uid}
 
 💰 بیلانس: {bal} AF
-
 👥 ټول یوزران: {total}
 
 🔗 لینک:
@@ -176,86 +163,93 @@ https://t.me/{BOT_USERNAME}?start={uid}
 💸 هر دعوت = {INVITE} AF"""
         )
 
+    # 👥 دعوت
     elif text=="👥 دعوت":
         await update.message.reply_text(f"https://t.me/{BOT_USERNAME}?start={uid}")
 
+    # 💰 پیسې زیاتول
     elif text=="💰 پیسې زیاتول":
         await update.message.reply_text("انتخاب:",reply_markup=money_kb())
 
-    elif text=="📱 شمېره ثبت":
-        await update.message.reply_text("شمېره ولیکه:")
-        context.user_data["phone"]=True
+    elif text=="🔙 شاته":
+        await update.message.reply_text("🏠",reply_markup=main_kb())
 
-    elif context.user_data.get("phone",False):
-        cur.execute("UPDATE users SET phone=? WHERE id=?", (text,uid))
-        conn.commit()
-        await update.message.reply_text("✅ ثبت شوه")
-        context.user_data["phone"]=False
-
-    elif text=="⚡ ایزي لوډ":
-        await update.message.reply_text("✅ ثبت شو")
-
-    elif text=="🤖 د رباټ په اړه":
-        await update.message.reply_text("🤖")
-
-    elif text=="📋 ټاسک":
-        cur.execute("SELECT username FROM tasks")
-        data = cur.fetchall()
-
-        btn=[]
-        for t in data:
-            btn.append([InlineKeyboardButton("Join",url=f"https://t.me/{t[0].replace('@','')}")])
-
-        btn.append([InlineKeyboardButton("Done",callback_data="task_done")])
-        await update.message.reply_text("ټاسک:",reply_markup=InlineKeyboardMarkup(btn))
-
+    # ================= BONUS FIX =================
     elif text=="🎁 بونس":
         await update.message.reply_text("🎁",reply_markup=bonus_kb())
 
-    # ================= ADMIN =================
-    elif text=="/admin":
+    elif text=="🎁 ورځنی بونس":
+        today=str(datetime.date.today())
+        cur.execute("SELECT last_daily FROM users WHERE id=?", (uid,))
+        last=cur.fetchone()[0]
+
+        if last==today:
+            await update.message.reply_text("❌ اخیستل شوی")
+        else:
+            cur.execute("UPDATE users SET balance=balance+?, last_daily=? WHERE id=?", (DAILY,today,uid))
+            conn.commit()
+            await update.message.reply_text(f"✅ {DAILY} AF اضافه شول")
+
+    elif text=="🔥 اوونیز بونس":
+        week=str(datetime.date.today().isocalendar()[1])
+        cur.execute("SELECT last_weekly FROM users WHERE id=?", (uid,))
+        last=cur.fetchone()[0]
+
+        if last==week:
+            await update.message.reply_text("❌ اخیستل شوی")
+        else:
+            cur.execute("UPDATE users SET balance=balance+?, last_weekly=? WHERE id=?", (WEEKLY,week,uid))
+            conn.commit()
+            await update.message.reply_text(f"✅ {WEEKLY} AF اضافه شول")
+
+    # ================= PHONE FIX =================
+    elif text=="📱 شمېره ثبت":
+        await update.message.reply_text("شمېره ولیکه (10 digits):")
+        context.user_data["phone"]=True
+
+    elif context.user_data.get("phone",False):
+        if text.isdigit() and len(text)==10:
+            cur.execute("UPDATE users SET phone=? WHERE id=?", (text,uid))
+            conn.commit()
+            await update.message.reply_text("✅ ثبت شوه")
+        else:
+            await update.message.reply_text("❌ باید 10 عددي نمبر وي")
+        context.user_data["phone"]=False
+
+    # ================= EASYLOAD FIX =================
+    elif text=="⚡ ایزي لوډ":
+        cur.execute("SELECT balance FROM users WHERE id=?", (uid,))
+        bal=cur.fetchone()[0]
+
+        if bal<50:
+            await update.message.reply_text("❌ 50 AF پکار دي")
+        else:
+            await update.message.reply_text("✅ ایزي لوډ Request واستول شو")
+
+    # ================= ABOUT FIX =================
+    elif text=="🤖 د رباټ په اړه":
+        await update.message.reply_text(
+"""🤖 دا یو پرمختللی افغان بوټ دی 🇦🇫
+
+💰 دلته تاسو کولی شئ پیسې وګټئ:
+👥 د دعوت له لارې
+📋 ټاسکونو سره
+🎁 بونس اخیستلو سره
+
+🚀 هر څومره زیات کار وکړئ همغومره زیات عاید ترلاسه کړئ!"""
+        )
+
+    # ================= ADMIN FIX =================
+    elif text.lower()=="/admin":
         if uid==ADMIN_ID:
             await update.message.reply_text("👑 Admin Panel",reply_markup=admin_kb())
+        else:
+            await update.message.reply_text("❌ ته اډمین نه یې")
 
-    elif text=="➕ فورس چینل" and uid==ADMIN_ID:
-        await update.message.reply_text("username:")
-        context.user_data["add_force"]=True
-
-    elif context.user_data.get("add_force",False):
-        cur.execute("INSERT INTO channels(username) VALUES(?)",(text,))
-        conn.commit()
-        await update.message.reply_text("✅ اضافه شو")
-        context.user_data["add_force"]=False
-
-    elif text=="➖ فورس چینل" and uid==ADMIN_ID:
-        await update.message.reply_text("username:")
-        context.user_data["del_force"]=True
-
-    elif context.user_data.get("del_force",False):
-        cur.execute("DELETE FROM channels WHERE username=?", (text,))
-        conn.commit()
-        await update.message.reply_text("❌ حذف شو")
-        context.user_data["del_force"]=False
-
-    elif text=="➕ ټاسک چینل" and uid==ADMIN_ID:
-        await update.message.reply_text("username:")
-        context.user_data["add_task"]=True
-
-    elif context.user_data.get("add_task",False):
-        cur.execute("INSERT INTO tasks(username) VALUES(?)",(text,))
-        conn.commit()
-        await update.message.reply_text("✅ اضافه شو")
-        context.user_data["add_task"]=False
-
-    elif text=="➖ ټاسک چینل" and uid==ADMIN_ID:
-        await update.message.reply_text("username:")
-        context.user_data["del_task"]=True
-
-    elif context.user_data.get("del_task",False):
-        cur.execute("DELETE FROM tasks WHERE username=?", (text,))
-        conn.commit()
-        await update.message.reply_text("❌ حذف شو")
-        context.user_data["del_task"]=False
+    elif text=="👥 ټول یوزران" and uid==ADMIN_ID:
+        cur.execute("SELECT COUNT(*) FROM users")
+        count = cur.fetchone()[0]
+        await update.message.reply_text(f"👥 Users: {count}")
 
 # ================= CALLBACK =================
 async def callback(update,context):
@@ -276,5 +270,5 @@ app.add_handler(CallbackQueryHandler(callback))
 app.add_handler(CallbackQueryHandler(check_join,pattern="check_join"))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND,handler))
 
-print("🔥 FINAL ADMIN SYSTEM READY...")
+print("🔥 FINAL BOT FIXED 100%...")
 app.run_polling()
