@@ -1,9 +1,8 @@
 import sqlite3
 import datetime
-from telegram import *
-from telegram.ext import *
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# ====================== TOKEN ======================
 TOKEN = "8414495176:AAHt30wZaH4ScvdJG4L7Oi6NNJ0pDP_NmcU"
 
 ADMIN_ID = 8289491009
@@ -14,9 +13,8 @@ INVITE_REWARD = 4
 TASK_REWARD = 1
 DAILY_REWARD = 1
 WEEKLY_REWARD = 5
-WITHDRAW_LIMIT = 50
 
-# ====================== DATABASE ======================
+# ===== DB =====
 conn = sqlite3.connect("bot.db", check_same_thread=False)
 cur = conn.cursor()
 
@@ -29,277 +27,256 @@ ref INTEGER,
 phone TEXT,
 daily TEXT,
 weekly TEXT)""")
-
-cur.execute("CREATE TABLE IF NOT EXISTS forcejoin(link TEXT)")
-cur.execute("CREATE TABLE IF NOT EXISTS tasks(link TEXT)")
 conn.commit()
 
-# ====================== FUNCTIONS ======================
-def get_user(uid, name, ref=None):
-    cur.execute("SELECT id FROM users WHERE id=?", (uid,))
+# ===== USER =====
+def get_user(uid,name,ref=None):
+    cur.execute("SELECT * FROM users WHERE id=?", (uid,))
     if not cur.fetchone():
-        cur.execute("INSERT INTO users(id, name, ref) VALUES(?,?,?)", (uid, name, ref))
+        cur.execute("INSERT INTO users(id,name,ref) VALUES(?,?,?)",(uid,name,ref))
         conn.commit()
-        return True
-    return False
 
-def time_left(last, seconds):
+# ===== TIME =====
+def time_left(last,seconds):
     if not last:
         return 0
-    try:
-        last = datetime.datetime.fromisoformat(last)
-        return seconds - (datetime.datetime.now() - last).total_seconds()
-    except:
-        return 0
+    last=datetime.datetime.fromisoformat(last)
+    now=datetime.datetime.now()
+    return seconds-(now-last).total_seconds()
 
 def format_time(sec):
-    sec = int(sec)
-    h = sec // 3600
-    m = (sec % 3600) // 60
-    s = sec % 60
-    return f"{h:02d}:{m:02d}:{s:02d}"
+    sec=int(sec)
+    h=sec//3600
+    m=(sec%3600)//60
+    s=sec%60
+    return f"{h}:{m}:{s}"
 
-# ====================== KEYBOARDS ======================
+# ===== KEYBOARD =====
 def main_kb():
     return ReplyKeyboardMarkup([
         ["❗ خپل حساب معلومات"],
         ["📞 شمېره ثبت کړی"],
-        ["💰 افغانۍ زیاتول", "🏦 ایزیلوډ"],
+        ["💰 افغانۍ زیاتول","🏦 ایزیلوډ"],
         ["📊 د ربات په اړه"]
-    ], resize_keyboard=True)
+    ],resize_keyboard=True)
 
 def invite_kb():
     return ReplyKeyboardMarkup([
-        ["🏅 غوره دعوت کوونکي", "✏️ ستا دعوت کوونکي"],
-        ["🎁 ورځنۍ بونس", "🎁 اوونیز بونس"],
-        ["👥 ملګري دعوت کول", "🎁 Task"],
+        ["🏅 غوره دعوت کوونکي","✏️ ستا دعوت کوونکي"],
+        ["🎁 ورځنۍ بونس","🎁 اوونیز بونس"],
+        ["👥 ملګري دعوت کول"],
         ["🔙 وتل"]
-    ], resize_keyboard=True)
+    ],resize_keyboard=True)
 
 def phone_kb():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("📲 شمېره واستوه", request_contact=True)],
+        [KeyboardButton("📲 شمېره واستوه",request_contact=True)],
         ["🔙 وتل"]
-    ], resize_keyboard=True)
+    ],resize_keyboard=True)
 
 def admin_kb():
     return ReplyKeyboardMarkup([
         ["📢 Broadcast"],
-        ["➕ Force Join Add", "➖ Force Join Del"],
-        ["➕ Task Add", "➖ Task Del"],
+        ["➕ Force Join Add","➖ Force Join Del"],
+        ["➕ Task Add","➖ Task Del"],
         ["📊 Stats"],
         ["🔙 وتل"]
-    ], resize_keyboard=True)
+    ],resize_keyboard=True)
 
-# ====================== INLINE ======================
-def force_join_btn(links):
-    return InlineKeyboardMarkup([[InlineKeyboardButton("📢 Join Channel", url=l)] for l in links])
-
-def task_btn(link):
+# ===== INLINE =====
+def force_join_btn(link):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📢 Task Channel", url=link)],
-        [InlineKeyboardButton("✅ Done", callback_data=f"done|{link}")]
+        [InlineKeyboardButton("📢 چینل جواین", url=link)]
     ])
 
+# ===== CHECK JOIN =====
 async def is_joined(user_id, bot, link):
     try:
-        if "joinchat" in link or "+" in link:
-            return True
         chat = link.replace("https://t.me/", "@")
         member = await bot.get_chat_member(chat, user_id)
-        return member.status in ["member", "administrator", "creator"]
+        return member.status in ["member","administrator","creator"]
     except:
         return False
 
-# ====================== START ======================
-async def start(update, context):
-    uid = update.effective_user.id
-    name = update.effective_user.first_name
+# ===== START =====
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid=update.effective_user.id
+    name=update.effective_user.first_name
 
-    ref = int(context.args[0]) if context.args else None
-    get_user(uid, name, ref)
+    ref=None
+    if context.args:
+        try:
+            ref=int(context.args[0])
+        except:
+            pass
 
-    cur.execute("SELECT link FROM forcejoin")
-    not_joined = [l[0] for l in cur.fetchall() if not await is_joined(uid, context.bot, l[0])]
+    cur.execute("SELECT * FROM users WHERE id=?", (uid,))
+    exists = cur.fetchone()
 
-    if not_joined:
-        await update.message.reply_text("❗ چینلونه جواین کړه", reply_markup=force_join_btn(not_joined))
+    if not exists:
+        get_user(uid,name,ref)
+
+        if ref and ref!=uid:
+            cur.execute("UPDATE users SET balance=balance+?,invites=invites+1 WHERE id=?",(INVITE_REWARD,ref))
+            conn.commit()
+            await context.bot.send_message(ref,"🎉 یو کس دې راوست\n💰 4 افغانۍ اضافه شوه")
+
+    await context.bot.send_message(ADMIN_ID,f"👤 نوی یوزر:\n{name}\n{uid}")
+
+    link = context.bot_data.get("force_join")
+    if link:
+        joined = await is_joined(uid, context.bot, link)
+        if not joined:
+            await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه",reply_markup=force_join_btn(link))
+            return
+
+    await update.message.reply_text("ښه راغلاست 👋",reply_markup=main_kb())
+
+# ===== HANDLER =====
+async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
         return
 
-    await update.message.reply_text("ښه راغلاست 👋", reply_markup=main_kb())
+    uid=update.effective_user.id
+    name=update.effective_user.first_name
+    get_user(uid,name)
 
-# ====================== MAIN HANDLER ======================
-async def handler(update, context):
-    uid = update.effective_user.id
-    name = update.effective_user.first_name
-    get_user(uid, name)
+    link = context.bot_data.get("force_join")
+    if link:
+        joined = await is_joined(uid, context.bot, link)
+        if not joined:
+            await update.message.reply_text("❗ مخکې چینل جواین کړه",reply_markup=force_join_btn(link))
+            return
 
-    # Contact Handling
     if update.message.contact:
-        phone = update.message.contact.phone_number
-        cur.execute("UPDATE users SET phone=? WHERE id=?", (phone, uid))
+        phone=update.message.contact.phone_number
+        cur.execute("UPDATE users SET phone=? WHERE id=?", (phone,uid))
         conn.commit()
-        await update.message.reply_text("✅ شمېره ثبت شوه!", reply_markup=main_kb())
+        await update.message.reply_text("✅ شمېره ثبت شوه",reply_markup=main_kb())
         return
 
-    text = update.message.text
-    if not text:
-        return
+    text = update.message.text if update.message.text else ""
 
-    # Admin Panel
-    if uid == ADMIN_ID and text == "/admin":
-        await update.message.reply_text("🛠 ادمین پینل", reply_markup=admin_kb())
-        return
+    if text=="🔙 وتل":
+        await update.message.reply_text("🏠 اصلي مېنو",reply_markup=main_kb())
 
-    # ==================== ADMIN SECTION ====================
-    if uid == ADMIN_ID:
-        if text == "📢 Broadcast":
-            context.user_data["broadcast"] = True
-            await update.message.reply_text("✉️ پیغام ولیکئ چې ټولو ته واستول شي:")
-            return
+    elif text=="❗ خپل حساب معلومات":
+        cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
+        bal,inv=cur.fetchone()
 
-        if context.user_data.get("broadcast"):
-            cur.execute("SELECT id FROM users")
-            success = 0
-            for (user_id,) in cur.fetchall():
-                try:
-                    await context.bot.send_message(user_id, text)
-                    success += 1
-                except:
-                    pass
-            context.user_data["broadcast"] = False
-            await update.message.reply_text(f"✅ براډکاسټ واستول شو!\n{success} یوزر ته")
-            return
-
-        if text == "📊 Stats":
-            cur.execute("SELECT COUNT(*), SUM(balance) FROM users")
-            total, bal = cur.fetchone() or (0, 0)
-            await update.message.reply_text(f"👥 ټول کاروونکي: {total}\n💰 ټول بیلانس: {bal:.2f} افغانۍ")
-            return
-
-    # Force Join Check
-    cur.execute("SELECT link FROM forcejoin")
-    not_joined = [l[0] for l in cur.fetchall() if not await is_joined(uid, context.bot, l[0])]
-    if not_joined and uid != ADMIN_ID:
-        await update.message.reply_text("❗ مخکې چینل جواین کړه", reply_markup=force_join_btn(not_joined))
-        return
-
-    # Fake Balance
-    cur.execute("SELECT balance, invites FROM users WHERE id=?", (uid,))
-    real_balance, invites = cur.fetchone() or (0, 0)
-    fake_balance = int(real_balance * 3 + 20)
-
-    # ==================== USER COMMANDS ====================
-    if text == "🔙 وتل":
-        await update.message.reply_text("🏠", reply_markup=main_kb())
-
-    elif text == "❗ خپل حساب معلومات":
         await update.message.reply_text(
 f"""💳 کارن = {name}
 
-🆔 {uid}
+💡  ایډي کارن : {uid}
 
-💰 بیلانس = {fake_balance} افغانۍ
-👥 دعوتونه = {invites}"""
+🛣ستاسو انټرنټ اندازه= {int(bal)} جی بی انټرنیټ
+دلته پيسي کړه
+
+🔗 د بیلانس زیاتولو لپاره  [ 👫 کسان ] دعوت کړی"""
         )
 
-    elif text == "📞 شمېره ثبت کړی":
-        await update.message.reply_text("شمېره واستوه", reply_markup=phone_kb())
+    elif text=="📞 شمېره ثبت کړی":
+        await update.message.reply_text("شمېره واستوه 👇 یا ولیکه",reply_markup=phone_kb())
 
-    elif text == "💰 افغانۍ زیاتول":
-        await update.message.reply_text("انتخاب کړه", reply_markup=invite_kb())
+    elif text.startswith("07") or text.startswith("+93"):
+        cur.execute("UPDATE users SET phone=? WHERE id=?", (text,uid))
+        conn.commit()
+        await update.message.reply_text("✅ شمېره ثبت شوه",reply_markup=main_kb())
 
-    elif text == "👥 ملګري دعوت کول":
-        link = f"https://t.me/{BOT_USERNAME}?start={uid}"
-        await update.message.reply_text(f"🔗 {link}")
+    elif text=="💰 افغانۍ زیاتول":
+        await update.message.reply_text("انتخاب کړه 👇",reply_markup=invite_kb())
 
-    elif text == "✏️ ستا دعوت کوونکي":
-        cur.execute("SELECT name FROM users WHERE ref=?", (uid,))
+    elif text=="👥 ملګري دعوت کول":
+        link=f"https://t.me/{BOT_USERNAME}?start={uid}"
+        cur.execute("SELECT invites FROM users WHERE id=?", (uid,))
+        inv=cur.fetchone()[0]
+
+        await update.message.reply_text(
+f"""👥 ستا دعوت: {inv}
+
+🔗 لینک:
+{link}
+
+🎁 هر دعوت = 4 افغانۍ"""
+        )
+
+    elif text=="🏅 غوره دعوت کوونکي":
+        cur.execute("SELECT name,invites FROM users ORDER BY invites DESC LIMIT 5")
         data = cur.fetchall()
-        if not data:
-            await update.message.reply_text("❌ تر اوسه هیڅوک نه دي دعوت کړي")
+
+        msg="🏅 غوره دعوت کوونکي:\n\n"
+        for i,row in enumerate(data,1):
+            msg+=f"{i}. {row[0]} - {row[1]} دعوت\n"
+
+        await update.message.reply_text(msg)
+
+    elif text=="✏️ ستا دعوت کوونکي":
+        cur.execute("SELECT ref FROM users WHERE id=?", (uid,))
+        ref=cur.fetchone()[0]
+
+        if ref:
+            await update.message.reply_text(f"👤 ته د دې له خوا راغلی یې:\n{ref}")
         else:
-            msg = "👥 ستا دعوت کوونکي:\n\n" + "\n".join(f"{i}- {x[0]}" for i, x in enumerate(data, 1))
-            await update.message.reply_text(msg)
+            await update.message.reply_text("❌ تا څوک نه دی دعوت کړی")
 
-    elif text == "🏅 غوره دعوت کوونکي":
-        cur.execute("SELECT name, invites FROM users ORDER BY invites DESC LIMIT 10")
-        data = cur.fetchall()
-        msg = "🏆 غوره دعوت کوونکي:\n\n" + "\n".join(f"{i}- {n} ({v})" for i, (n, v) in enumerate(data, 1))
-        await update.message.reply_text(msg or "تر اوسه هیڅوک نشته")
-
-    elif text == "🎁 ورځنۍ بونس":
+    elif text=="🎁 ورځنۍ بونس":
         cur.execute("SELECT daily FROM users WHERE id=?", (uid,))
-        last = cur.fetchone()[0]
-        t = time_left(last, 86400)
-        if t > 0:
-            await update.message.reply_text(f"⏳ {format_time(t)}")
+        last=cur.fetchone()[0]
+
+        t=time_left(last,86400)
+        if t>0:
+            await update.message.reply_text(f"⏳ پاتې:\n{format_time(t)}")
         else:
-            cur.execute("UPDATE users SET balance=balance+?, daily=? WHERE id=?",
-                        (DAILY_REWARD, datetime.datetime.now().isoformat(), uid))
+            cur.execute("UPDATE users SET balance=balance+?,daily=? WHERE id=?",
+                        (DAILY_REWARD,datetime.datetime.now().isoformat(),uid))
             conn.commit()
             await update.message.reply_text("🎁 1 افغانۍ درکړل شوه")
 
-    elif text == "🎁 اوونیز بونس":
+    elif text=="🎁 اوونیز بونس":
         cur.execute("SELECT weekly FROM users WHERE id=?", (uid,))
-        last = cur.fetchone()[0]
-        t = time_left(last, 604800)
-        if t > 0:
-            await update.message.reply_text(f"⏳ {format_time(t)}")
+        last=cur.fetchone()[0]
+
+        t=time_left(last,604800)
+        if t>0:
+            await update.message.reply_text(f"⏳ پاتې:\n{format_time(t)}")
         else:
-            cur.execute("UPDATE users SET balance=balance+?, weekly=? WHERE id=?",
-                        (WEEKLY_REWARD, datetime.datetime.now().isoformat(), uid))
+            cur.execute("UPDATE users SET balance=balance+?,weekly=? WHERE id=?",
+                        (WEEKLY_REWARD,datetime.datetime.now().isoformat(),uid))
             conn.commit()
             await update.message.reply_text("🎁 5 افغانۍ درکړل شوه")
 
-    elif text == "🎁 Task":
-        cur.execute("SELECT link FROM tasks")
-        data = cur.fetchall()
-        if not data:
-            await update.message.reply_text("❌ تر اوسه هیڅ ټاسک نشته")
-        else:
-            for t in data[:5]:
-                await update.message.reply_text("📌 Task", reply_markup=task_btn(t[0]))
+    elif text=="🏦 ایزیلوډ":
+        cur.execute("SELECT balance FROM users WHERE id=?", (uid,))
+        bal=cur.fetchone()[0]
 
-    elif text == "🏦 ایزیلوډ":
-        if real_balance < WITHDRAW_LIMIT:
-            await update.message.reply_text("❌ لږ تر لږه 50 افغانۍ پوره کړئ")
+        if bal<50:
+            await update.message.reply_text("❌ لږ تر لږه 50 افغانۍ پوره کړه")
         else:
-            await update.message.reply_text("✅ درخواست ادمین ته واستول شو")
-            await context.bot.send_message(ADMIN_ID, f"💸 واپس درخواست:\nID: {uid}\nName: {name}")
+            await update.message.reply_text("✅ درخواست واستول شو")
+            await context.bot.send_message(ADMIN_ID,f"💸 درخواست:\n{uid}")
 
-    elif text == "📊 د ربات په اړه":
+    elif text=="📊 د ربات په اړه":
         cur.execute("SELECT COUNT(*) FROM users")
-        real = cur.fetchone()[0]
-        fake_users = 200 + real * 3
-        await update.message.reply_text(f"""📊 معلومات
+        total=cur.fetchone()[0]
 
-👥 کاروونکي: {fake_users}
+        await update.message.reply_text(
+f"""📊 معلومات
 
-🔗 {CHANNEL_LINK}""")
+👥 کاروونکي: {total}
 
-# ====================== CALLBACK ======================
-async def callback(update, context):
-    q = update.callback_query
-    await q.answer()
-    link = q.data.split("|")[1]
-    uid = q.from_user.id
+🔗 {CHANNEL_LINK}
 
-    if await is_joined(uid, context.bot, link):
-        cur.execute("UPDATE users SET balance=balance+? WHERE id=?", (TASK_REWARD, uid))
-        conn.commit()
-        await q.message.reply_text("🎉 انعام واخیستل شو")
-    else:
-        await q.message.reply_text("❌ لومړی چینل جواین کړئ")
+🆔 {ADMIN_ID}"""
+        )
 
-# ====================== RUN ======================
-app = Application.builder().token(TOKEN).build()
+    elif text=="/admin" and uid==ADMIN_ID:
+        await update.message.reply_text("👑 Admin Panel",reply_markup=admin_kb())
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("admin", start))
-app.add_handler(MessageHandler(filters.CONTACT, handler))
-app.add_handler(MessageHandler(filters.TEXT & \~filters.COMMAND, handler))
-app.add_handler(CallbackQueryHandler(callback))
+# ===== RUN =====
+app=Application.builder().token(TOKEN).build()
 
-print("✅ BOT READY - Token Added Successfully")
+app.add_handler(CommandHandler("start",start))
+app.add_handler(MessageHandler(filters.TEXT | filters.CONTACT,handler))
+
+print("BOT RUNNING...")
 app.run_polling()
