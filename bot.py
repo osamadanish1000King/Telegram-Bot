@@ -343,16 +343,14 @@ f"""👥 ستا دعوت: {inv}
     total = (real_total * 2) + 100
 
     await update.message.reply_text(
-        f"""📊 معلومات
+    f"""📊 معلومات
 
 👥 کاروونکي: {total}
+
+🔗 {CHANNEL_LINK}
+👤 {ADMIN_ID}
 """
     )
-🔗 {CHANNEL_LINK}
-
- {ADMIN_ID}"""
-        )
-
     elif text=="📢 ټاسک":
         link = context.bot_data.get("task")
 
