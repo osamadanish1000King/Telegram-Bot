@@ -106,7 +106,7 @@ async def is_joined(user_id, bot, link):
         return False
 
 # ===== START =====
-    async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
 
