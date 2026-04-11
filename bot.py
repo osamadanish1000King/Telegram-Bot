@@ -112,18 +112,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     uid = update.effective_user.id
     name = update.effective_user.first_name
+    get_user(uid, name)
 
-    ref = int(context.args[0]) if context.args else None
+    # ✅ FORCE JOIN in START
+    link = get_setting("force_join")
+    if link:
+        if not await is_joined(uid, context.bot, link):
+            await update.message.reply_text(
+                "❗ مهرباني وکړه چینل جواین کړه",
+                reply_markup=force_join_btn(link)
+            )
+            return
 
-    cur.execute("SELECT * FROM users WHERE id=?", (uid,))
-    if not cur.fetchone():
-        get_user(uid,name,ref)
+    await update.message.reply_text("👇 انتخاب کړه", reply_markup=main_kb())
 
-        if ref and ref!=uid:
-            cur.execute("UPDATE users SET balance=balance+?,invites=invites+1 WHERE id=?",(INVITE_REWARD,ref))
-            conn.commit()
 
-    await update.message.reply_text("👇 انتخاب کړه",reply_markup=main_kb())
+# ===== HANDLER =====
+async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
+    uid = update.effective_user.id
+    name = update.effective_user.first_name
+    get_user(uid, name)
+
+    text = update.message.text if update.message.text else ""
 
 # ===== TASK DONE =====
 async def done_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -148,13 +161,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text or ""
 
     # FORCE JOIN
-    link = get_setting("force_join")
-    if link:
-        if not await is_joined(uid,context.bot,link):
-            await update.message.reply_text("❗ چینل جواین کړه",reply_markup=force_join_btn(link))
-            return
+link = get_setting("force_join")
+if link:
+    if not await is_joined(uid, context.bot, link):
+        await update.message.reply_text(
+            "❗ مهرباني وکړه چینل جواین کړه",
+            reply_markup=force_join_btn(link)
+        )
+        return
 
-    # TASK
+# TASK
     if text=="📢 ټاسک":
         link = get_setting("task")
         if not link:
@@ -281,6 +297,6 @@ app = Application.builder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(done_task, pattern="done_task"))
 app.add_handler(MessageHandler(filters.TEXT | filters.CONTACT, handler))
-
+app.add_handler(CallbackQueryHandler(done_task, pattern="done_task"))
 print("BOT RUNNING...")
 app.run_polling()
