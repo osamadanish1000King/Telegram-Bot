@@ -64,6 +64,7 @@ def invite_kb():
         ["🏅 غوره دعوت کوونکي","✏️ ستا دعوت کوونکي"],
         ["🎁 ورځنۍ بونس","🎁 اوونیز بونس"],
         ["👥 ملګري دعوت کول"],
+        ["📢 ټاسک"],
         ["🔙 وتل"]
     ],resize_keyboard=True)
 
@@ -83,11 +84,18 @@ def admin_kb():
     ],resize_keyboard=True)
 
 # ===== INLINE =====
+
 def force_join_btn(link):
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📢 چینل جواین", url=link)]
     ])
 
+
+def task_btn(link):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Task Channel", url=link)],
+        [InlineKeyboardButton("✅ Done", callback_data="done_task")]
+    ])
 # ===== CHECK JOIN =====
 async def is_joined(user_id, bot, link):
     try:
