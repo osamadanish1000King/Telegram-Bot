@@ -308,19 +308,20 @@ f"""📊 معلومات
 
 🔗 {CHANNEL_LINK}
 
-🆔 {ADMIN_ID}"""
+ {ADMIN_ID}"""
         )
-elif text=="📢 ټاسک":
-    link = context.bot_data.get("task")
 
-    if not link:
-        await update.message.reply_text("❌ ټاسک نشته")
-        return
+    elif text=="📢 ټاسک":
+        link = context.bot_data.get("task")
 
-    await update.message.reply_text(
-        "📢 ټاسک ترسره کړه 👇",
-        reply_markup=task_btn(link)
-    )
+        if not link:
+            await update.message.reply_text("🌿 ټاسک نشته په نږدي وخت کې به اضافه شي")
+            return
+
+        await update.message.reply_text(
+            "📢 مهرباني وکړه لاندي ټاسک ترسره کړه اويوه افغانۍ وګټه👇",
+            reply_markup=task_btn(link)
+        )
 
 # ===== RUN =====
 app=Application.builder().token(TOKEN).build()
