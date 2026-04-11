@@ -153,7 +153,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text if update.message.text else ""
 
     # ===== FORCE JOIN CHECK =====
-    link = get_setting("force_join") ✅
+    link = get_setting("force_join") 
     if link:
         joined = await is_joined(uid, context.bot, link)
         if not joined:
