@@ -137,7 +137,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه",reply_markup=force_join_btn(link))
             return
 
-    await update.message.reply_text("🌟 ښه راغلاست ګرانه کاروونکي! 👋
+    await update.message.reply_text("""🌟 ښه راغلاست ګرانه کاروونکي! 👋
 
 💸 دلته ته کولی شې ډېري په اسانۍسره افغانۍ وګټې!
 
@@ -151,7 +151,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 🚀 همدا اوس پیل کړه او عاید جوړ کړه 👇
 
-👇 له مینو څخه یو انتخاب وکړه",reply_markup=main_kb())
+👇 له مینو څخه یو انتخاب وکړه""",reply_markup=main_kb())
 
 # ===== HANDLER =====
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
