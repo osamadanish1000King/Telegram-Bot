@@ -74,15 +74,26 @@ def phone_kb():
         ["🔙 وتل"]
     ],resize_keyboard=True)
 
-# ===== ADMIN INLINE PANEL =====
-def admin_panel():
+# ===== ADMIN KEYBOARD =====
+def admin_kb():
+    return ReplyKeyboardMarkup([
+        ["📢 Broadcast"],
+        ["➕ Force Join Add","➖ Force Join Del"],
+        ["➕ Task Add","➖ Task Del"],
+        ["📊 Stats"],
+        ["🔙 وتل"]
+    ],resize_keyboard=True)
+
+# ===== INLINE =====
+def force_join_btn(link):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📢 Broadcast",callback_data="bc")],
-        [InlineKeyboardButton("➕ Force Join Add",callback_data="fja"),
-         InlineKeyboardButton("➖ Force Join Del",callback_data="fjd")],
-        [InlineKeyboardButton("➕ Task Add",callback_data="ta"),
-         InlineKeyboardButton("➖ Task Del",callback_data="td")],
-        [InlineKeyboardButton("📊 Stats",callback_data="stats")]
+        [InlineKeyboardButton("📢 چینل جواین", url=link)]
+    ])
+
+def task_btn(link):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Task Channel", url=link)],
+        [InlineKeyboardButton("✅ Done", callback_data="done_task")]
     ])
 
 # ===== START =====
@@ -99,7 +110,7 @@ async def start(update,context):
 
     get_user(uid,name,ref)
 
-    # invite reward + notify
+    # invite reward
     if ref and ref!=uid:
         cur.execute("UPDATE users SET balance=balance+?,invites=invites+1 WHERE id=?",(INVITE_REWARD,ref))
         conn.commit()
@@ -107,6 +118,15 @@ async def start(update,context):
 
     # admin notify
     await context.bot.send_message(ADMIN_ID,f"👤 نوی یوزر:\n{name}\n{uid}")
+
+    # force join check
+    link = context.bot_data.get("force_join")
+    if link:
+        await update.message.reply_text(
+            "❗ مهرباني وکړه چینل جواین کړه",
+            reply_markup=force_join_btn(link)
+        )
+        return
 
     await update.message.reply_text("ښه راغلاست 👋",reply_markup=main_kb())
 
@@ -117,7 +137,7 @@ async def handler(update,context):
 
     get_user(uid,name)
 
-    # ===== CONTACT SAVE =====
+    # contact save
     if update.message.contact:
         phone=update.message.contact.phone_number
         cur.execute("UPDATE users SET phone=? WHERE id=?", (phone,uid))
@@ -148,7 +168,6 @@ f"""👤 {name}
     elif text=="📞 شمېره ثبت کړی":
         await update.message.reply_text("شمېره واستوه 👇 یا ولیکه",reply_markup=phone_kb())
 
-    # manual phone
     elif text.startswith("07") or text.startswith("+93"):
         cur.execute("UPDATE users SET phone=? WHERE id=?", (text,uid))
         conn.commit()
@@ -218,6 +237,14 @@ f"""👥 ستا دعوت: {inv}
             conn.commit()
             await update.message.reply_text("🎁 5 افغانۍ درکړل شوه")
 
+    # ===== TASK (INLINE) =====
+    elif text=="🎁 Task":
+        link = context.bot_data.get("task")
+        if link:
+            await update.message.reply_text("📢 ټاسک ترسره کړه",reply_markup=task_btn(link))
+        else:
+            await update.message.reply_text("❌ نشته")
+
     # ===== EASYLOAD =====
     elif text=="🏦 ایزیلوډ":
         cur.execute("SELECT balance FROM users WHERE id=?", (uid,))
@@ -248,7 +275,25 @@ f"""📊 معلومات
 
     # ===== ADMIN =====
     elif text=="/admin" and uid==ADMIN_ID:
-        await update.message.reply_text("👑 Admin Panel",reply_markup=admin_panel())
+        await update.message.reply_text("👑 Admin Panel",reply_markup=admin_kb())
+
+    elif text=="➕ Force Join Add" and uid==ADMIN_ID:
+        context.user_data["fjoin"]=True
+        await update.message.reply_text("لینک ولیکه")
+
+    elif context.user_data.get("fjoin"):
+        context.user_data["fjoin"]=False
+        context.bot_data["force_join"]=text
+        await update.message.reply_text("✅ ثبت شو")
+
+    elif text=="➕ Task Add" and uid==ADMIN_ID:
+        context.user_data["task"]=True
+        await update.message.reply_text("Task لینک ولیکه")
+
+    elif context.user_data.get("task"):
+        context.user_data["task"]=False
+        context.bot_data["task"]=text
+        await update.message.reply_text("✅ Task ثبت شو")
 
 # ===== RUN =====
 app=Application.builder().token(TOKEN).build()
