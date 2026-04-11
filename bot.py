@@ -164,20 +164,21 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
 # ===== TASK =====
-elif text == "📢 ټاسک":
-    link = get_setting("task")
+if text == "📢 ټاسک":
+        link = get_setting("task")
 
-    if not link:
-        await update.message.reply_text("❌ ټاسک نشته")
-        return
+        if not link:
+            await update.message.reply_text("❌ ټاسک نشته")
+            return
 
-    await update.message.reply_text(
-        "📢 مهرباني وکړه ټاسک ترسره کړه 👇",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 چینل", url=link)],
-            [InlineKeyboardButton("✅ Done", callback_data="done_task")]
-        ])
-    )
+        await update.message.reply_text(
+            "📢 مهرباني وکړه ټاسک ترسره کړه 👇",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("📢 چینل", url=link)],
+                [InlineKeyboardButton("✅ Done", callback_data="done_task")]
+            ])
+        )
+    
 
 # ===== USER INFO =====
     # ===== USER INFO =====
