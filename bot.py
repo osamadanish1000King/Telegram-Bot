@@ -28,6 +28,7 @@ def main_kb():
         ["📊 حالت"],
         ["👥 دعوت","💰 پیسې زیاتول"],
         ["📱 شمېره ثبت","⚡ ایزي لوډ"],
+        ["📋 ټاسک"],
         ["🤖 د رباټ په اړه"]
     ],resize_keyboard=True)
 
@@ -52,7 +53,6 @@ def get_user(uid):
 async def force_join(update,context):
     uid = update.effective_user.id
 
-    # ❗ اډمین ته شرط نشته
     if uid == ADMIN_ID:
         return True
 
@@ -77,15 +77,14 @@ async def force_join(update,context):
         buttons.append([InlineKeyboardButton("✅ چک کول", callback_data="check_join")])
 
         if update.message:
-            await update.message.reply_text("🚨 مهرباني وکړئ ټول چینلونه جواین کړئ:",reply_markup=InlineKeyboardMarkup(buttons))
+            await update.message.reply_text("🚨 چینلونه جواین کړه:",reply_markup=InlineKeyboardMarkup(buttons))
         else:
-            await update.callback_query.message.reply_text("🚨 چینلونه جواین کړئ:",reply_markup=InlineKeyboardMarkup(buttons))
+            await update.callback_query.message.reply_text("🚨 چینلونه جواین کړه:",reply_markup=InlineKeyboardMarkup(buttons))
 
         return False
 
     return True
 
-# ================= CHECK BUTTON =================
 async def check_join(update,context):
     q = update.callback_query
     await q.answer()
@@ -120,6 +119,61 @@ async def admin_cmd(update, context):
     else:
         await update.message.reply_text(f"❌ {ADMIN_USERNAME}")
 
+# ================= TASK SYSTEM =================
+async def show_tasks(update,context):
+    uid = update.effective_user.id
+
+    cur.execute("SELECT username FROM tasks")
+    tasks = cur.fetchall()
+
+    if not tasks:
+        await update.message.reply_text("❌ ټاسک نشته")
+        return
+
+    buttons = []
+
+    for t in tasks:
+        ch = t[0]
+        buttons.append([
+            InlineKeyboardButton(f"📢 {ch}", url=f"https://t.me/{ch.replace('@','')}"),
+            InlineKeyboardButton("✅ واخیستل", callback_data=f"task_{ch}")
+        ])
+
+    await update.message.reply_text("📋 ټاسکونه:",reply_markup=InlineKeyboardMarkup(buttons))
+
+async def task_done(update,context):
+    q = update.callback_query
+    await q.answer()
+
+    uid = q.from_user.id
+
+    cur.execute("UPDATE users SET balance=balance+? WHERE id=?", (TASK_REWARD,uid))
+    conn.commit()
+
+    await q.message.reply_text(f"🎉 {TASK_REWARD} AF اضافه شول")
+
+# ================= BROADCAST =================
+async def broadcast(update,context):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    await update.message.reply_text("✉️ پیغام ولیکه:")
+    context.user_data["bc"]=True
+
+async def send_bc(update,context):
+    if context.user_data.get("bc"):
+        cur.execute("SELECT id FROM users")
+        users = cur.fetchall()
+
+        for u in users:
+            try:
+                await context.bot.send_message(u[0], update.message.text)
+            except:
+                pass
+
+        await update.message.reply_text("✅ واستول شو")
+        context.user_data["bc"]=False
+
 # ================= MAIN =================
 async def handler(update,context):
 
@@ -137,21 +191,45 @@ async def handler(update,context):
         bal,inv = cur.fetchone()
 
         cur.execute("SELECT COUNT(*) FROM users")
-        total = cur.fetchone()[0]
+        real = cur.fetchone()[0]
+
+        if uid == ADMIN_ID:
+            total = real
+        else:
+            total = real + 100
 
         await update.message.reply_text(
 f"""💰 {bal} AF
 👥 دعوتونه: {inv}
+👥 ټول یوزران: {total}
 
 🔗 https://t.me/{BOT_USERNAME}?start={uid}"""
         )
 
-    # ================= ADMIN BUTTONS =================
+    # 👥 دعوت
+    elif text=="👥 دعوت":
+        await update.message.reply_text(f"https://t.me/{BOT_USERNAME}?start={uid}")
+
+    # 📋 TASK
+    elif text=="📋 ټاسک":
+        await show_tasks(update,context)
+
+    # ================= ADMIN =================
     elif uid==ADMIN_ID:
 
-        # ➕ فورس چینل
-        if text=="➕ فورس چینل":
-            await update.message.reply_text("یوزرنیم ولیکه (@channel):")
+        if text=="👥 ټول یوزران":
+            cur.execute("SELECT COUNT(*) FROM users")
+            count = cur.fetchone()[0]
+            await update.message.reply_text(f"👥 Real Users: {count}")
+
+        elif text=="📢 برودکاست":
+            await broadcast(update,context)
+
+        elif context.user_data.get("bc"):
+            await send_bc(update,context)
+
+        elif text=="➕ فورس چینل":
+            await update.message.reply_text("یوزرنیم:")
             context.user_data["add_f"]=True
 
         elif context.user_data.get("add_f"):
@@ -160,16 +238,8 @@ f"""💰 {bal} AF
             await update.message.reply_text("✅ اضافه شو")
             context.user_data["add_f"]=False
 
-        # ➖ فورس چینل
         elif text=="➖ فورس چینل":
-            cur.execute("SELECT username FROM channels")
-            data = cur.fetchall()
-
-            msg="❌ د حذف لپاره انتخاب کړه:\n"
-            for i in data:
-                msg+=f"{i[0]}\n"
-
-            await update.message.reply_text(msg)
+            await update.message.reply_text("یوزرنیم:")
             context.user_data["del_f"]=True
 
         elif context.user_data.get("del_f"):
@@ -178,27 +248,18 @@ f"""💰 {bal} AF
             await update.message.reply_text("❌ حذف شو")
             context.user_data["del_f"]=False
 
-        # ➕ ټاسک چینل
         elif text=="➕ ټاسک چینل":
-            await update.message.reply_text("Task چینل ولیکه:")
+            await update.message.reply_text("Task چینل:")
             context.user_data["add_t"]=True
 
         elif context.user_data.get("add_t"):
             cur.execute("INSERT INTO tasks VALUES(?)",(text,))
             conn.commit()
-            await update.message.reply_text("✅ Task اضافه شو")
+            await update.message.reply_text("✅ اضافه شو")
             context.user_data["add_t"]=False
 
-        # ➖ ټاسک چینل
         elif text=="➖ ټاسک چینل":
-            cur.execute("SELECT username FROM tasks")
-            data = cur.fetchall()
-
-            msg="❌ د حذف لپاره انتخاب کړه:\n"
-            for i in data:
-                msg+=f"{i[0]}\n"
-
-            await update.message.reply_text(msg)
+            await update.message.reply_text("یوزرنیم:")
             context.user_data["del_t"]=True
 
         elif context.user_data.get("del_t"):
@@ -207,7 +268,6 @@ f"""💰 {bal} AF
             await update.message.reply_text("❌ حذف شو")
             context.user_data["del_t"]=False
 
-        # 📋 لیست
         elif text=="📋 چینلونه":
             cur.execute("SELECT username FROM channels")
             f = cur.fetchall()
@@ -231,7 +291,8 @@ app=Application.builder().token(TOKEN).build()
 app.add_handler(CommandHandler("start",start))
 app.add_handler(CommandHandler("admin",admin_cmd))
 app.add_handler(CallbackQueryHandler(check_join,pattern="check_join"))
+app.add_handler(CallbackQueryHandler(task_done,pattern="task_"))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND,handler))
 
-print("🔥 FINAL ULTRA 100% WORKING")
+print("🔥 LEVEL 10 FULL BOT READY")
 app.run_polling()
