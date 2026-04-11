@@ -164,7 +164,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
 # ===== TASK =====
-if text == "📢 ټاسک":
+elif text == "📢 ټاسک":
     link = get_setting("task")
 
     if not link:
