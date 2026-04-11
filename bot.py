@@ -1,7 +1,7 @@
 import sqlite3
 import datetime
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
 TOKEN = "8414495176:AAHt30wZaH4ScvdJG4L7Oi6NNJ0pDP_NmcU"
 
@@ -209,6 +209,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text=="❗ خپل حساب معلومات":
         cur.execute("SELECT balance FROM users WHERE id=?", (uid,))
         bal=cur.fetchone()[0]
+        
 
         await update.message.reply_text(
 f"""💳 کارن = {name}
@@ -309,6 +310,17 @@ f"""📊 معلومات
 
 🆔 {ADMIN_ID}"""
         )
+elif text=="📢 ټاسک":
+    link = context.bot_data.get("task")
+
+    if not link:
+        await update.message.reply_text("❌ ټاسک نشته")
+        return
+
+    await update.message.reply_text(
+        "📢 ټاسک ترسره کړه 👇",
+        reply_markup=task_btn(link)
+    )
 
 # ===== RUN =====
 app=Application.builder().token(TOKEN).build()
