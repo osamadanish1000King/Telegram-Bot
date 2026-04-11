@@ -337,17 +337,17 @@ f"""👥 ستا دعوت: {inv}
             await context.bot.send_message(ADMIN_ID,f"💸 درخواست:\n{uid}")
 
     elif text=="📊 د ربات په اړه":
-        cur.execute("SELECT COUNT(*) FROM users")
-        
-        real_total = cur.fetchone()[0]
-        
-total = (real_total * 2) + 100
+    cur.execute("SELECT COUNT(*) FROM users")
+    real_total = cur.fetchone()[0]
 
-        await update.message.reply_text(
-f"""📊 معلومات
+    total = (real_total * 2) + 100
+
+    await update.message.reply_text(
+        f"""📊 معلومات
 
 👥 کاروونکي: {total}
-
+"""
+    )
 🔗 {CHANNEL_LINK}
 
  {ADMIN_ID}"""
