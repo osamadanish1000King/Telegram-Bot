@@ -310,8 +310,7 @@ f"""📊 معلومات
 
 🆔 {ADMIN_ID}"""
         )
-    
-        elif text=="📢 ټاسک":
+elif text=="📢 ټاسک":
     link = context.bot_data.get("task")
 
     if not link:
