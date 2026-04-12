@@ -22,7 +22,7 @@ cur.execute("""
 CREATE TABLE IF NOT EXISTS users(
     id INTEGER PRIMARY KEY,
     name TEXT,
-    balance REAL DEFAULT 100,
+    balance REAL DEFAULT 0,
     invites INTEGER DEFAULT 0,
     ref INTEGER,
     phone TEXT,
