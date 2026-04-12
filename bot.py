@@ -223,7 +223,7 @@ await update.message.reply_text(
         [InlineKeyboardButton("✅ Done", callback_data="done_task")]
     ])
 )
-        
+
     elif text == "❗ خپل حساب معلومات":
     cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
     b,i = cur.fetchone()
