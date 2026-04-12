@@ -237,8 +237,8 @@ f"""💳 کارن = {name}
 💰 بیلانس = {b} افغانۍ
 👥 دعوتونه = {i}"""
         )
-    
-elif text=="👥 ملګري دعوت کول":
+    return
+    if text=="👥 ملګري دعوت کول":
     cur.execute("SELECT invites FROM users WHERE id=?", (uid,))
     inv = cur.fetchone()[0]
     link = f"https://t.me/{BOT_USERNAME}?start={uid}"
