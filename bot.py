@@ -69,6 +69,7 @@ def time_left(last, sec):
     return sec - (datetime.datetime.now() - last).total_seconds()
 
 # ===== FORCE JOIN =====
+# ===== FORCE JOIN =====
 async def is_joined(uid, bot, link):
     try:
         chat = link.replace("https://t.me/", "@")
@@ -77,11 +78,22 @@ async def is_joined(uid, bot, link):
     except:
         return False
 
-def force_join_btn(link):
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📢 Join Channel", url=link)]
-    ])
-
+async def check_force_join(update: Update, context: ContextTypes.DEFAULT_TYPE, uid):
+    link = get_setting("force_join")
+    if not link:
+        return False
+    
+    if await is_joined(uid, context.bot, link):
+        return False
+    
+    await update.message.reply_text(
+        "<b>❗ مهرباني وکړه لومړی چینل جواین کړه ترڅو ربات کار وکړي!</b>",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 چینل جواین کړه", url=link)]
+        ]),
+        parse_mode='HTML'
+    )
+    return True
 # ===== KEYBOARDS =====
 def main_kb():
     return ReplyKeyboardMarkup([
@@ -125,11 +137,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ref = int(context.args[0]) if context.args else None
     get_user(uid, name, ref)
 
+    # Force Join Check
     link = get_setting("force_join")
     if link and not await is_joined(uid, context.bot, link):
         await update.message.reply_text(
-            "<b>❗ مهرباني وکړه چینل جواین کړه</b>",
-            reply_markup=force_join_btn(link),
+            "<b>❗ مهرباني وکړه لومړی چینل جواین کړه!</b>",
+            reply_markup=InlineKeyboardMarkup([   # ← مستقیم Inline Button
+                [InlineKeyboardButton("📢 چینل جواین کړه", url=link)]
+            ]),
             parse_mode='HTML'
         )
         return
@@ -139,7 +154,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=main_kb(),
         parse_mode='HTML'
     )
-
 # ===== CALLBACK =====
 async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -162,6 +176,9 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===== MAIN HANDLER =====
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        # ===== FORCE JOIN CHECK (هر میسج کې) =====
+        if await check_force_join(update, context, uid):
+            return
         if not update.message:
             return
 
