@@ -264,32 +264,80 @@ async def handler(update:Update,context:ContextTypes.DEFAULT_TYPE):
             return
 
         # ===== USER =====
-        if text=="📞 شمېره ثبت کړی":
-            await update.message.reply_text("📲 خپله شمېره واستوه",reply_markup=phone_kb())
+       # ===== USER =====
+if text=="📞 شمېره ثبت کړی":
+    await update.message.reply_text("📲 خپله شمېره واستوه",reply_markup=phone_kb())
 
-        elif update.message.contact:
-            phone=update.message.contact.phone_number
-            cur.execute("UPDATE users SET phone=? WHERE id=?",(phone,uid))
-            conn.commit()
-            await update.message.reply_text("✅ شمېره ثبت شوه",reply_markup=main_kb())
+elif update.message.contact:
+    phone=update.message.contact.phone_number
+    cur.execute("UPDATE users SET phone=? WHERE id=?",(phone,uid))
+    conn.commit()
+    await update.message.reply_text("✅ شمېره ثبت شوه",reply_markup=main_kb())
 
-        elif text=="💰 افغانۍ زیاتول":
-            await update.message.reply_text("👇 انتخاب کړه",reply_markup=invite_kb())
+elif text=="🏅 غوره دعوت کوونکي":
+    cur.execute("SELECT name,invites FROM users ORDER BY invites DESC LIMIT 5")
+    data=cur.fetchall()
 
-        elif text=="👥 ملګري دعوت کول":
-            cur.execute("SELECT invites FROM users WHERE id=?",(uid,))
-            invites=cur.fetchone()[0]
-            link=f"https://t.me/{BOT_USERNAME}?start={uid}"
+    if not data:
+        await update.message.reply_text("❌ معلومات نشته")
+        return
 
-            await update.message.reply_text(f"""👥 ستا دعوت: {invites}
+    msg="🏆 غوره دعوت کوونکي:\n\n"
+    for i,u in enumerate(data,1):
+        msg+=f"{i}. {u[0]} - {u[1]}\n"
+
+    await update.message.reply_text(msg)
+
+elif text=="✏️ ستا دعوت کوونکي":
+    cur.execute("SELECT invites FROM users WHERE id=?",(uid,))
+    invites=cur.fetchone()[0]
+    await update.message.reply_text(f"👥 ستا دعوتونه: {invites}")
+
+elif text=="🎁 ورځنۍ بونس":
+    cur.execute("SELECT daily FROM users WHERE id=?",(uid,))
+    last=cur.fetchone()[0]
+    left=time_left(last,86400)
+
+    if last and left>0:
+        h=int(left//3600)
+        m=int((left%3600)//60)
+        await update.message.reply_text(f"⏳ پاتې وخت: {h}h {m}m")
+    else:
+        cur.execute("UPDATE users SET balance=balance+?,daily=? WHERE id=?",
+                    (DAILY_REWARD,datetime.datetime.now().isoformat(),uid))
+        conn.commit()
+        await update.message.reply_text("🎉 1 افغانۍ ترلاسه شوې")
+
+elif text=="🎁 اوونیز بونس":
+    cur.execute("SELECT weekly FROM users WHERE id=?",(uid,))
+    last=cur.fetchone()[0]
+    left=time_left(last,604800)
+
+    if last and left>0:
+        await update.message.reply_text("⏳ وروسته بیا هڅه وکړه")
+    else:
+        cur.execute("UPDATE users SET balance=balance+?,weekly=? WHERE id=?",
+                    (WEEKLY_REWARD,datetime.datetime.now().isoformat(),uid))
+        conn.commit()
+        await update.message.reply_text("🎉 5 افغانۍ ترلاسه شوې")
+
+elif text=="💰 افغانۍ زیاتول":
+    await update.message.reply_text("👇 انتخاب کړه",reply_markup=invite_kb())
+
+elif text=="👥 ملګري دعوت کول":
+    cur.execute("SELECT invites FROM users WHERE id=?",(uid,))
+    invites=cur.fetchone()[0]
+    link=f"https://t.me/{BOT_USERNAME}?start={uid}"
+
+    await update.message.reply_text(f"""👥 ستا دعوت: {invites}
 
 🔗 لینک:
 {link}
 
 🎁 هر دعوت = {INVITE_REWARD} افغانۍ""")
 
-        elif text=="🏦 ایزیلوډ":
-            await update.message.reply_text("""⚠️
+elif text=="🏦 ایزیلوډ":
+    await update.message.reply_text("""⚠️
 
 د ایزیلوډ ترلاسه کولو لپاره:
 
@@ -301,34 +349,30 @@ async def handler(update:Update,context:ContextTypes.DEFAULT_TYPE):
 کله چې 50 افغانۍ پوره کړې،
 نو بیا ایزیلوډ درکول کېږي ✅""")
 
-        elif text=="📢 ټاسک":
-            link=get_setting("task")
-            if not link:
-                await update.message.reply_text("❌ ټاسک نشته")
-                return
+elif text=="📢 ټاسک":
+    link=get_setting("task")
+    if not link:
+        await update.message.reply_text("❌ ټاسک نشته")
+        return
 
-            await update.message.reply_text(
-                "📢 ټاسک ترسره کړه 👇",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("📢 چینل",url=link)],
-                    [InlineKeyboardButton("✅ Done",callback_data="done")]
-                ])
-            )
+    await update.message.reply_text(
+        "📢 ټاسک ترسره کړه 👇",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 چینل",url=link)],
+            [InlineKeyboardButton("✅ Done",callback_data="done")]
+        ])
+    )
 
-        elif text=="❗ خپل حساب معلومات":
-            cur.execute("SELECT balance,invites FROM users WHERE id=?",(uid,))
-            b,i=cur.fetchone()
+elif text=="❗ خپل حساب معلومات":
+    cur.execute("SELECT balance,invites FROM users WHERE id=?",(uid,))
+    b,i=cur.fetchone()
 
-            await update.message.reply_text(f"""💳 کارن = {name}
+    await update.message.reply_text(f"""💳 کارن = {name}
 
 🆔 {uid}
 
 💰 بیلانس = {b}
 👥 دعوتونه = {i}""")
-
-    except Exception as e:
-        print("ERROR:", e)
-
 # ===== RUN =====
 app=Application.builder().token(TOKEN).build()
 
