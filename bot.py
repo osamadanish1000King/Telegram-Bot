@@ -213,15 +213,16 @@ elif text == "📢 ټاسک":
     done = data[0] if data else 0
 
     if done == 1:
-        await update.message.reply_text("✅ تا مخکې دا ټاسک مکمل کړی")
-        return
+    await update.message.reply_text("✅ تا مخکې دا ټاسک مکمل کړی")
+    return
 
-    await update.message.reply_text(
-        "📢 مهرباني وکړه ټاسک ترسره کړه 👇",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 چینل", url=link)],
-            [InlineKeyboardButton("✅ Done", callback_data="done_task")]
-        ])
+await update.message.reply_text(
+    "📢 مهرباني وکړه ټاسک ترسره کړه 👇",
+    reply_markup=InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 چینل", url=link)],
+        [InlineKeyboardButton("✅ Done", callback_data="done_task")]
+    ])
+)
         
     elif text == "❗ خپل حساب معلومات":
     cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
