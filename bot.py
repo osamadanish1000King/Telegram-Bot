@@ -171,72 +171,73 @@ async def done_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.edit_message_text("✅ ټاسک مکمل شو +1 افغانۍ")
 
 # ===== HANDLER =====
+# ===== HANDLER =====
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
 
     uid = update.effective_user.id
     name = update.effective_user.first_name
-    get_user(uid,name)
+    get_user(uid, name)
 
-    text = update.message.text or ""# FORCE JOIN
-link = get_setting("force_join")
-if link and not await is_joined(uid, context.bot, link):
-    await update.message.reply_text(
-        "❗ مهرباني وکړه چینل جواین کړه",
-        reply_markup=force_join_btn(link)
-    )
-    return
+    text = update.message.text or ""
 
-# 🔙 Back button
-if text == "🔙 وتل":
-    context.user_data["phone"] = False
-    await update.message.reply_text(
-        "🏠 اصلي مینو ته لاړې",
-        reply_markup=main_kb()
-    )
-    return   # ✅ ډېر مهم
-
-
-# ===== HANDLER START =====
-
-elif text == "📢 ټاسک":
-    link = get_setting("task")
-
-    if not link:
-        await update.message.reply_text("❌ ټاسک نشته")
+    # ===== FORCE JOIN =====
+    link = get_setting("force_join")
+    if link and not await is_joined(uid, context.bot, link):
+        await update.message.reply_text(
+            "❗ مهرباني وکړه چینل جواین کړه",
+            reply_markup=force_join_btn(link)
+        )
         return
 
-    # check task status
-    cur.execute("SELECT task_done FROM users WHERE id=?", (uid,))
-    data = cur.fetchone()
-    done = data[0] if data else 0
+    # 🔙 Back button
+    if text == "🔙 وتل":
+        context.user_data["phone"] = False
+        await update.message.reply_text(
+            "🏠 اصلي مینو ته لاړې",
+            reply_markup=main_kb()
+        )
+        return
 
-    if done == 1:
-        await update.message.reply_text("✅ تا مخکې دا ټاسک مکمل کړی")
-    return
+    # ===== MAIN MENU HANDLER =====
+    if text == "📢 ټاسک":
+        link = get_setting("task")
 
-await update.message.reply_text(
-    "📢 مهرباني وکړه ټاسک ترسره کړه 👇",
-    reply_markup=InlineKeyboardMarkup([
-        [InlineKeyboardButton("📢 چینل", url=link)],
-        [InlineKeyboardButton("✅ Done", callback_data="done_task")]
-    ])
-)
+        if not link:
+            await update.message.reply_text("❌ ټاسک نشته")
+            return
 
-elif text == "❗ خپل حساب معلومات":
-    cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
-    b, i = cur.fetchone()
+        # check task status
+        cur.execute("SELECT task_done FROM users WHERE id=?", (uid,))
+        data = cur.fetchone()
+        done = data[0] if data else 0
 
-    await update.message.reply_text(
+        if done == 1:
+            await update.message.reply_text("✅ تا مخکې دا ټاسک مکمل کړی")
+            return
+
+        await update.message.reply_text(
+            "📢 مهرباني وکړه ټاسک ترسره کړه 👇",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("📢 چینل", url=link)],
+                [InlineKeyboardButton("✅ Done", callback_data="done_task")]
+            ])
+        )
+
+    elif text == "❗ خپل حساب معلومات":
+        cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
+        b, i = cur.fetchone()
+
+        await update.message.reply_text(
 f"""💳 کارن = {name}
 
 🆔 {uid}
 
 💰 بیلانس = {b} افغانۍ
 👥 دعوتونه = {i}"""
-    )
-
+        )
+    
 elif text=="👥 ملګري دعوت کول":
     cur.execute("SELECT invites FROM users WHERE id=?", (uid,))
     inv = cur.fetchone()[0]
