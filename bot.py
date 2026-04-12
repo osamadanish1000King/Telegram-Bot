@@ -304,40 +304,162 @@ elif text == "🎁 ورځنۍ بونس":
         cur.execute(
             "UPDATE users SET balance=balance+?, daily=? WHERE id=?",
             (DAILY_REWARD, datetime.datetime.now().isoformat(), uid)
+# ===== HANDLER =====
+async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
+    uid = update.effective_user.id
+    name = update.effective_user.first_name
+    get_user(uid, name)
+
+    text = update.message.text or ""
+
+    # BACK
+    if text == "🔙 وتل":
+        await update.message.reply_text("🏠 اصلي مینو ته لاړې", reply_markup=main_kb())
+        return
+
+    # ===== ADMIN =====
+    if uid == ADMIN_ID and text == "/admin":
+        await update.message.reply_text("👑 Admin Panel", reply_markup=admin_kb())
+        return
+
+    if uid == ADMIN_ID and text == "📢 Broadcast":
+        context.user_data["broadcast"] = True
+        await update.message.reply_text("✉️ مسيج راولیږه")
+        return
+
+    if uid == ADMIN_ID and context.user_data.get("broadcast"):
+        msg = text
+        context.user_data["broadcast"] = False
+
+        cur.execute("SELECT id FROM users")
+        users = cur.fetchall()
+
+        sent = 0
+        for u in users:
+            try:
+                await context.bot.send_message(u[0], msg)
+                sent += 1
+            except:
+                pass
+
+        await update.message.reply_text(f"✅ واستول شو: {sent}")
+        return
+
+    # FORCE JOIN
+    link = get_setting("force_join")
+    if link and not await is_joined(uid, context.bot, link):
+        await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه", reply_markup=force_join_btn(link))
+        return
+
+    # ===== USER =====
+
+    if text == "📢 ټاسک":
+        link = get_setting("task")
+        if not link:
+            await update.message.reply_text("❌ ټاسک نشته")
+            return
+
+        cur.execute("SELECT task_done FROM users WHERE id=?", (uid,))
+        done = cur.fetchone()[0]
+
+        if done == 1:
+            await update.message.reply_text("✅ تا مخکې دا ټاسک مکمل کړی")
+            return
+
+        await update.message.reply_text(
+            "📢 مهرباني وکړه ټاسک ترسره کړه 👇",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("📢 چینل", url=link)],
+                [InlineKeyboardButton("✅ Done", callback_data="done_task")]
+            ])
         )
-        conn.commit()
-        await update.message.reply_text("🎉 1 افغانۍ ترلاسه شوې")
 
-elif text == "🎁 اوونیز بونس":
-    cur.execute("SELECT weekly FROM users WHERE id=?", (uid,))
-    data = cur.fetchone()
-    last = data[0] if data else None
+    elif text == "❗ خپل حساب معلومات":
+        cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
+        b, i = cur.fetchone()
 
-    left = time_left(last, 604800)
+        await update.message.reply_text(f"""💳 کارن = {name}
 
-    if last and left > 0:
-        d = int(left // 86400)
-        h = int((left % 86400) // 3600)
-        await update.message.reply_text(f"⏳ پاتې وخت: {d} ورځې {h} ساعت")
-    else:
-        cur.execute(
-            "UPDATE users SET balance=balance+?, weekly=? WHERE id=?",
-            (WEEKLY_REWARD, datetime.datetime.now().isoformat(), uid)
-        )
-        conn.commit()
-        await update.message.reply_text("🎉 5 افغانۍ ترلاسه شوې")
+🆔 {uid}
 
-elif text == "📊 د ربات په اړه":
-    cur.execute("SELECT COUNT(*) FROM users")
-    total = cur.fetchone()[0]
+💰 بیلانس = {b} افغانۍ
+👥 دعوتونه = {i}""")
 
-    await update.message.reply_text(f"""📊 معلومات
+    elif text == "💰 افغانۍ زیاتول":
+        await update.message.reply_text("👇 انتخاب کړه", reply_markup=invite_kb())
+
+    elif text == "🏅 غوره دعوت کوونکي":
+        cur.execute("SELECT name,invites FROM users ORDER BY invites DESC LIMIT 5")
+        data = cur.fetchall()
+
+        if not data:
+            await update.message.reply_text("❌ معلومات نشته")
+            return
+
+        msg = "🏆 غوره دعوت کوونکي:\n\n"
+        for i, u in enumerate(data, 1):
+            msg += f"{i}. {u[0]} - {u[1]}\n"
+
+        await update.message.reply_text(msg)
+
+    elif text == "✏️ ستا دعوت کوونکي":
+        cur.execute("SELECT invites FROM users WHERE id=?", (uid,))
+        data = cur.fetchone()
+        invites = data[0] if data else 0
+
+        await update.message.reply_text(f"👥 ستا دعوتونه: {invites}")
+
+    elif text == "🎁 ورځنۍ بونس":
+        cur.execute("SELECT daily FROM users WHERE id=?", (uid,))
+        data = cur.fetchone()
+        last = data[0] if data else None
+
+        left = time_left(last, 86400)
+
+        if last and left > 0:
+            h = int(left // 3600)
+            m = int((left % 3600) // 60)
+            await update.message.reply_text(f"⏳ پاتې وخت: {h}h {m}m")
+        else:
+            cur.execute(
+                "UPDATE users SET balance=balance+?, daily=? WHERE id=?",
+                (DAILY_REWARD, datetime.datetime.now().isoformat(), uid)
+            )
+            conn.commit()
+            await update.message.reply_text("🎉 1 افغانۍ ترلاسه شوې")
+
+    elif text == "🎁 اوونیز بونس":
+        cur.execute("SELECT weekly FROM users WHERE id=?", (uid,))
+        data = cur.fetchone()
+        last = data[0] if data else None
+
+        left = time_left(last, 604800)
+
+        if last and left > 0:
+            d = int(left // 86400)
+            h = int((left % 86400) // 3600)
+            await update.message.reply_text(f"⏳ پاتې وخت: {d} ورځې {h} ساعت")
+        else:
+            cur.execute(
+                "UPDATE users SET balance=balance+?, weekly=? WHERE id=?",
+                (WEEKLY_REWARD, datetime.datetime.now().isoformat(), uid)
+            )
+            conn.commit()
+            await update.message.reply_text("🎉 5 افغانۍ ترلاسه شوې")
+
+    elif text == "📊 د ربات په اړه":
+        cur.execute("SELECT COUNT(*) FROM users")
+        total = cur.fetchone()[0]
+
+        await update.message.reply_text(f"""📊 معلومات
 
 👥 کاروونکي: {total}
 
 🔗 {CHANNEL_LINK}
 👤 {ADMIN_ID}""")
-
 # ===== RUN =====
 app = Application.builder().token(TOKEN).build()
 
