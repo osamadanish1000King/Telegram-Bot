@@ -173,144 +173,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     uid = update.effective_user.id
     name = update.effective_user.first_name
-    get_user(uid,name)
-
-    text = update.message.text or ""
-
-    # BACK
-    if text == "🔙 وتل":
-        await update.message.reply_text("🏠 اصلي مینو ته لاړې", reply_markup=main_kb())
-        return
-
-    # ===== ADMIN PANEL =====
-    if uid == ADMIN_ID and text == "/admin":
-        await update.message.reply_text("👑 Admin Panel", reply_markup=admin_kb())
-        return
-
-    # FORCE JOIN ADD
-    if uid == ADMIN_ID and text == "➕ Force Join Add":
-        context.user_data["f"] = True
-        await update.message.reply_text("🔗 د چینل لینک راکړه")
-        return
-
-    if uid == ADMIN_ID and context.user_data.get("f") and text.startswith("http"):
-        set_setting("force_join", text)
-        context.user_data["f"] = False
-        await update.message.reply_text("✅ Force Join اضافه شو")
-        return
-
-    if uid == ADMIN_ID and text == "➖ Force Join Del":
-        set_setting("force_join", "")
-        await update.message.reply_text("❌ حذف شو")
-        return
-
-    # TASK ADD
-    if uid == ADMIN_ID and text == "➕ Task Add":
-        context.user_data["t"] = True
-        await update.message.reply_text("🔗 د ټاسک لینک راکړه")
-        return
-
-    if uid == ADMIN_ID and context.user_data.get("t") and text.startswith("http"):
-        set_setting("task", text)
-        context.user_data["t"] = False
-        await update.message.reply_text("✅ Task اضافه شو")
-        return
-
-    if uid == ADMIN_ID and text == "➖ Task Del":
-        set_setting("task", "")
-        await update.message.reply_text("❌ حذف شو")
-        return
-
-    # TASK RESET
-    if uid == ADMIN_ID and text == "♻️ Task Reset":
-        cur.execute("UPDATE users SET task_done=0")
-        conn.commit()
-        await update.message.reply_text("✅ ټول ټاسکونه ریست شول")
-        return
-
-    # BROADCAST
-    if uid == ADMIN_ID and text == "📢 Broadcast":
-        context.user_data["broadcast"] = True
-        await update.message.reply_text("✉️ مسيج راولیږه")
-        return
-
-    if uid == ADMIN_ID and context.user_data.get("broadcast"):
-        msg = text
-        context.user_data["broadcast"] = False
-
-        cur.execute("SELECT id FROM users")
-        users = cur.fetchall()
-
-        sent = 0
-        for u in users:
-            try:
-                await context.bot.send_message(u[0], msg)
-                sent += 1
-            except:
-                pass
-
-        await update.message.reply_text(f"✅ واستول شو: {sent}")
-        return
-
-    # FORCE JOIN CHECK
-    link = get_setting("force_join")
-    if link and not await is_joined(uid, context.bot, link):
-        await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه",reply_markup=force_join_btn(link))
-        return
-
-    # ===== USER SECTION =====
-if text == "📢 ټاسک":
-    link = get_setting("task")
-    if not link:
-        await update.message.reply_text("❌ ټاسک نشته")
-        return
-
-elif text == "💰 افغانۍ زیاتول":
-    await update.message.reply_text("👇 انتخاب کړه", reply_markup=invite_kb())
-    
-elif text == "🏅 غوره دعوت کوونکي":
-    cur.execute("SELECT name,invites FROM users ORDER BY invites DESC LIMIT 5")
-    data = cur.fetchall()
-
-    if not data:
-        await update.message.reply_text("❌ معلومات نشته")
-        return
-
-    msg = "🏆 غوره دعوت کوونکي:\n\n"
-    for i, u in enumerate(data, 1):
-        msg += f"{i}. {u[0]} - {u[1]}\n"
-
-    await update.message.reply_text(msg)
-
-elif text == "✏️ ستا دعوت کوونکي":
-    cur.execute("SELECT invites FROM users WHERE id=?", (uid,))
-    data = cur.fetchone()
-    invites = data[0] if data else 0
-
-    await update.message.reply_text(f"👥 ستا دعوتونه: {invites}")
-
-elif text == "🎁 ورځنۍ بونس":
-    cur.execute("SELECT daily FROM users WHERE id=?", (uid,))
-    data = cur.fetchone()
-    last = data[0] if data else None
-
-    left = time_left(last, 86400)
-
-    if last and left > 0:
-        h = int(left // 3600)
-        m = int((left % 3600) // 60)
-        await update.message.reply_text(f"⏳ پاتې وخت: {h}h {m}m")
-    else:
-        cur.execute(
-            "UPDATE users SET balance=balance+?, daily=? WHERE id=?",
-            (DAILY_REWARD, datetime.datetime.now().isoformat(), uid)
-# ===== HANDLER =====
-async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-
-    uid = update.effective_user.id
-    name = update.effective_user.first_name
     get_user(uid, name)
 
     text = update.message.text or ""
@@ -320,38 +182,15 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🏠 اصلي مینو ته لاړې", reply_markup=main_kb())
         return
 
-    # ===== ADMIN =====
+    # ADMIN PANEL
     if uid == ADMIN_ID and text == "/admin":
         await update.message.reply_text("👑 Admin Panel", reply_markup=admin_kb())
-        return
-
-    if uid == ADMIN_ID and text == "📢 Broadcast":
-        context.user_data["broadcast"] = True
-        await update.message.reply_text("✉️ مسيج راولیږه")
-        return
-
-    if uid == ADMIN_ID and context.user_data.get("broadcast"):
-        msg = text
-        context.user_data["broadcast"] = False
-
-        cur.execute("SELECT id FROM users")
-        users = cur.fetchall()
-
-        sent = 0
-        for u in users:
-            try:
-                await context.bot.send_message(u[0], msg)
-                sent += 1
-            except:
-                pass
-
-        await update.message.reply_text(f"✅ واستول شو: {sent}")
         return
 
     # FORCE JOIN
     link = get_setting("force_join")
     if link and not await is_joined(uid, context.bot, link):
-        await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه", reply_markup=force_join_btn(link))
+        await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه",reply_markup=force_join_btn(link))
         return
 
     # ===== USER =====
@@ -460,6 +299,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 🔗 {CHANNEL_LINK}
 👤 {ADMIN_ID}""")
+
 # ===== RUN =====
 app = Application.builder().token(TOKEN).build()
 
