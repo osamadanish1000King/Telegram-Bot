@@ -213,7 +213,7 @@ elif text == "📢 ټاسک":
     done = data[0] if data else 0
 
     if done == 1:
-    await update.message.reply_text("✅ تا مخکې دا ټاسک مکمل کړی")
+        await update.message.reply_text("✅ تا مخکې دا ټاسک مکمل کړی")
     return
 
 await update.message.reply_text(
