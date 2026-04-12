@@ -176,11 +176,27 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===== MAIN HANDLER =====
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        # ===== FORCE JOIN CHECK (هر میسج کې) =====
-        if await check_force_join(update, context, uid):
-            return
         if not update.message:
             return
+
+        uid = update.effective_user.id
+        name = update.effective_user.first_name
+        get_user(uid, name)   # ← دلته اول یوزر جوړ شي
+
+        text = update.message.text or ""
+
+        # ===== FORCE JOIN CHECK =====
+        link = get_setting("force_join")
+        if link and not await is_joined(uid, context.bot, link):
+            await update.message.reply_text(
+                "<b>❗ مهرباني وکړه لومړی چینل جواین کړه!</b>",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📢 چینل جواین کړه", url=link)]
+                ]),
+                parse_mode='HTML'
+            )
+            return
+            
 
         uid = update.effective_user.id
         name = update.effective_user.first_name
