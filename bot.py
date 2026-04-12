@@ -276,29 +276,129 @@ async def handler(update:Update,context:ContextTypes.DEFAULT_TYPE):
 
         text=update.message.text or ""
 
+# ===== HANDLER =====
+async def handler(update:Update,context:ContextTypes.DEFAULT_TYPE):
+    try:
+        if not update.message:
+            return
+
+        uid=update.effective_user.id
+        name=update.effective_user.first_name
+        get_user(uid,name)
+
+        text=update.message.text or ""
+
         # BACK
         if text=="🔙 وتل":
             await update.message.reply_text("🏠 اصلي مینو ته لاړې",reply_markup=main_kb())
             return
 
         # ===== ADMIN =====
-        # (دلته ستا admin کوډ)
+        if uid==ADMIN_ID and text=="/admin":
+            await update.message.reply_text("👑 Admin Panel",reply_markup=admin_kb())
+            return
 
-        # FORCE JOIN
+        if uid==ADMIN_ID and text=="📊 Stats":
+            cur.execute("SELECT COUNT(*) FROM users")
+            total=cur.fetchone()[0]
+            await update.message.reply_text(f"👥 ټول یوزر: {total}")
+            return
+
+        if uid==ADMIN_ID and text=="📋 Users":
+            cur.execute("SELECT id,name FROM users LIMIT 50")
+            data=cur.fetchall()
+            msg="👥 Users:\n\n"
+            for u in data:
+                msg+=f"{u[1]} - {u[0]}\n"
+            await update.message.reply_text(msg)
+            return
+
+        if uid==ADMIN_ID and text=="💰 Add Balance":
+            context.user_data["bal"]=True
+            await update.message.reply_text("uid او amount ولیکه\nمثال:\n123456 50")
+            return
+
+        if uid==ADMIN_ID and context.user_data.get("bal"):
+            try:
+                uid2,amount=text.split()
+                cur.execute("UPDATE users SET balance=balance+? WHERE id=?",(float(amount),int(uid2)))
+                conn.commit()
+                await update.message.reply_text("✅ اضافه شو")
+            except:
+                await update.message.reply_text("❌ غلط format")
+            context.user_data["bal"]=False
+            return
+
+        if uid==ADMIN_ID and text=="📢 Broadcast":
+            context.user_data["b"]=True
+            await update.message.reply_text("✉️ مسيج راولیږه")
+            return
+
+        if uid==ADMIN_ID and context.user_data.get("b"):
+            context.user_data["b"]=False
+            cur.execute("SELECT id FROM users")
+            for u in cur.fetchall():
+                try:
+                    await context.bot.send_message(u[0],text)
+                except:
+                    pass
+            await update.message.reply_text("✅ واستول شو")
+            return
+
+        if uid==ADMIN_ID and text=="➕ Force Join Add":
+            context.user_data["f"]=True
+            await update.message.reply_text("🔗 لینک راکړه")
+            return
+
+        if uid==ADMIN_ID and context.user_data.get("f") and text.startswith("http"):
+            set_setting("force_join",text)
+            context.user_data["f"]=False
+            await update.message.reply_text("✅ Force Join اضافه شو")
+            return
+
+        if uid==ADMIN_ID and text=="➖ Force Join Del":
+            set_setting("force_join","")
+            await update.message.reply_text("❌ حذف شو")
+            return
+
+        if uid==ADMIN_ID and text=="➕ Task Add":
+            context.user_data["t"]=True
+            await update.message.reply_text("🔗 لینک راکړه")
+            return
+
+        if uid==ADMIN_ID and context.user_data.get("t") and text.startswith("http"):
+            set_setting("task",text)
+            context.user_data["t"]=False
+            await update.message.reply_text("✅ Task اضافه شو")
+            return
+
+        if uid==ADMIN_ID and text=="➖ Task Del":
+            set_setting("task","")
+            await update.message.reply_text("❌ حذف شو")
+            return
+
+        if uid==ADMIN_ID and text=="♻️ Task Reset":
+            cur.execute("UPDATE users SET task_done=0")
+            conn.commit()
+            await update.message.reply_text("✅ ریست شو")
+            return
+
+        # ===== FORCE JOIN =====
         link=get_setting("force_join")
         if link and not await is_joined(uid,context.bot,link):
             await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه",reply_markup=force_join_btn(link))
             return
 
         # ===== USER =====
-        if text=="📞 شمېره ثبت کړی":
-            await update.message.reply_text("📲 خپله شمېره واستوه",reply_markup=phone_kb())
 
-        elif update.message.contact:
+        if update.message.contact:
             phone=update.message.contact.phone_number
             cur.execute("UPDATE users SET phone=? WHERE id=?",(phone,uid))
             conn.commit()
             await update.message.reply_text("✅ شمېره ثبت شوه",reply_markup=main_kb())
+
+        elif text=="📞 شمېره ثبت کړی":
+            await update.message.reply_text("📲 خپله شمېره واستوه",reply_markup=phone_kb())
 
         elif text=="🏅 غوره دعوت کوونکي":
             cur.execute("SELECT name,invites FROM users ORDER BY invites DESC LIMIT 5")
@@ -316,12 +416,14 @@ async def handler(update:Update,context:ContextTypes.DEFAULT_TYPE):
 
         elif text=="✏️ ستا دعوت کوونکي":
             cur.execute("SELECT invites FROM users WHERE id=?",(uid,))
-            invites=cur.fetchone()[0]
+            row=cur.fetchone()
+            invites=row[0] if row else 0
             await update.message.reply_text(f"👥 ستا دعوتونه: {invites}")
 
         elif text=="🎁 ورځنۍ بونس":
             cur.execute("SELECT daily FROM users WHERE id=?",(uid,))
-            last=cur.fetchone()[0]
+            row=cur.fetchone()
+            last=row[0] if row else None
             left=time_left(last,86400)
 
             if last and left>0:
@@ -336,7 +438,8 @@ async def handler(update:Update,context:ContextTypes.DEFAULT_TYPE):
 
         elif text=="🎁 اوونیز بونس":
             cur.execute("SELECT weekly FROM users WHERE id=?",(uid,))
-            last=cur.fetchone()[0]
+            row=cur.fetchone()
+            last=row[0] if row else None
             left=time_left(last,604800)
 
             if last and left>0:
@@ -352,7 +455,9 @@ async def handler(update:Update,context:ContextTypes.DEFAULT_TYPE):
 
         elif text=="👥 ملګري دعوت کول":
             cur.execute("SELECT invites FROM users WHERE id=?",(uid,))
-            invites=cur.fetchone()[0]
+            row=cur.fetchone()
+            invites=row[0] if row else 0
+
             link=f"https://t.me/{BOT_USERNAME}?start={uid}"
 
             await update.message.reply_text(f"""👥 ستا دعوت: {invites}
@@ -381,7 +486,11 @@ async def handler(update:Update,context:ContextTypes.DEFAULT_TYPE):
 
         elif text=="❗ خپل حساب معلومات":
             cur.execute("SELECT balance,invites FROM users WHERE id=?",(uid,))
-            b,i=cur.fetchone()
+            row=cur.fetchone()
+            if row:
+                b,i=row
+            else:
+                b,i=0,0
 
             await update.message.reply_text(f"""💳 کارن = {name}
 
@@ -392,6 +501,7 @@ async def handler(update:Update,context:ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         print("ERROR:", e)
+        
 # ===== RUN =====
 app=Application.builder().token(TOKEN).build()
 
