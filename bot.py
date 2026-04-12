@@ -259,15 +259,15 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # ===== USER SECTION =====
-    if text == "📢 ټاسک":
-    ...
-
-elif text == "❗ خپل حساب معلومات":
-    ...
+if text == "📢 ټاسک":
+    link = get_setting("task")
+    if not link:
+        await update.message.reply_text("❌ ټاسک نشته")
+        return
 
 elif text == "💰 افغانۍ زیاتول":
     await update.message.reply_text("👇 انتخاب کړه", reply_markup=invite_kb())
-
+    
 elif text == "🏅 غوره دعوت کوونکي":
     cur.execute("SELECT name,invites FROM users ORDER BY invites DESC LIMIT 5")
     data = cur.fetchall()
