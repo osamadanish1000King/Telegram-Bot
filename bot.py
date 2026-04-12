@@ -224,9 +224,10 @@ await update.message.reply_text(
     ])
 )
 
-    elif text == "❗ خپل حساب معلومات":
+elif text == "❗ خپل حساب معلومات":
     cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
-    b,i = cur.fetchone()
+    b, i = cur.fetchone()
+
     await update.message.reply_text(
 f"""💳 کارن = {name}
 
