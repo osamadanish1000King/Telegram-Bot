@@ -292,10 +292,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 👥 دعوتونه = {i}""")
 
     elif text == "💰 افغانۍ زیاتول":
-        await update.message.reply_text("👇 انتخاب کړه", reply_markup=invite_kb())
-
-
-# 👇 دلته paste کړه 👇
+    await update.message.reply_text("👇 انتخاب کړه", reply_markup=invite_kb())
 
 elif text == "🏅 غوره دعوت کوونکي":
     cur.execute("SELECT name,invites FROM users ORDER BY invites DESC LIMIT 5")
