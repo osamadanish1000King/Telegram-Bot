@@ -292,7 +292,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 👥 دعوتونه = {i}""")
 
     elif text == "💰 افغانۍ زیاتول":
-    await update.message.reply_text("👇 انتخاب کړه", reply_markup=invite_kb())
+        await update.message.reply_text("👇 انتخاب کړه", reply_markup=invite_kb())
 
 
 # 👇 دلته paste کړه 👇
