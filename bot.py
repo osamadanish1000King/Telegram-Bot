@@ -260,38 +260,12 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ===== USER SECTION =====
     if text == "📢 ټاسک":
-        link = get_setting("task")
-        if not link:
-            await update.message.reply_text("❌ ټاسک نشته")
-            return
+    ...
 
-        cur.execute("SELECT task_done FROM users WHERE id=?", (uid,))
-        done = cur.fetchone()[0]
+elif text == "❗ خپل حساب معلومات":
+    ...
 
-        if done == 1:
-            await update.message.reply_text("✅ تا مخکې دا ټاسک مکمل کړی")
-            return
-
-        await update.message.reply_text(
-            "📢 مهرباني وکړه ټاسک ترسره کړه 👇",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("📢 چینل", url=link)],
-                [InlineKeyboardButton("✅ Done", callback_data="done_task")]
-            ])
-        )
-
-    elif text == "❗ خپل حساب معلومات":
-        cur.execute("SELECT balance,invites FROM users WHERE id=?", (uid,))
-        b,i = cur.fetchone()
-
-        await update.message.reply_text(f"""💳 کارن = {name}
-
-🆔 {uid}
-
-💰 بیلانس = {b} افغانۍ
-👥 دعوتونه = {i}""")
-
-    elif text == "💰 افغانۍ زیاتول":
+elif text == "💰 افغانۍ زیاتول":
     await update.message.reply_text("👇 انتخاب کړه", reply_markup=invite_kb())
 
 elif text == "🏅 غوره دعوت کوونکي":
@@ -308,14 +282,12 @@ elif text == "🏅 غوره دعوت کوونکي":
 
     await update.message.reply_text(msg)
 
-
 elif text == "✏️ ستا دعوت کوونکي":
     cur.execute("SELECT invites FROM users WHERE id=?", (uid,))
     data = cur.fetchone()
     invites = data[0] if data else 0
 
     await update.message.reply_text(f"👥 ستا دعوتونه: {invites}")
-
 
 elif text == "🎁 ورځنۍ بونس":
     cur.execute("SELECT daily FROM users WHERE id=?", (uid,))
@@ -336,7 +308,6 @@ elif text == "🎁 ورځنۍ بونس":
         conn.commit()
         await update.message.reply_text("🎉 1 افغانۍ ترلاسه شوې")
 
-
 elif text == "🎁 اوونیز بونس":
     cur.execute("SELECT weekly FROM users WHERE id=?", (uid,))
     data = cur.fetchone()
@@ -355,7 +326,6 @@ elif text == "🎁 اوونیز بونس":
         )
         conn.commit()
         await update.message.reply_text("🎉 5 افغانۍ ترلاسه شوې")
-
 
 elif text == "📊 د ربات په اړه":
     cur.execute("SELECT COUNT(*) FROM users")
