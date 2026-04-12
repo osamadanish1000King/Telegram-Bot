@@ -194,15 +194,22 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❗ مهرباني وکړه چینل جواین کړه",reply_markup=force_join_btn(link))
         return
 
-    if text == "🔙 وتل":
-        await update.message.reply_text("🏠 اصلي مینو ته لاړې", reply_markup=main_kb())
-        return
-# ===== BROADCAST =====
-elif uid == ADMIN_ID and text == "📢 Broadcast":
+    🔙 BACK
+if text == "🔙 وتل":
+    await update.message.reply_text(
+        "🏠 اصلي مینو ته لاړې",
+        reply_markup=main_kb()
+    )
+    return
+
+# ===== BROADCAST START =====
+if uid == ADMIN_ID and text == "📢 Broadcast":
     context.user_data["broadcast"] = True
     await update.message.reply_text("✉️ مسيج راولیږه")
+    return
 
-elif uid == ADMIN_ID and context.user_data.get("broadcast"):
+# ===== BROADCAST SEND =====
+if uid == ADMIN_ID and context.user_data.get("broadcast"):
     msg = text
     context.user_data["broadcast"] = False
 
