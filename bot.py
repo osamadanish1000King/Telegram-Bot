@@ -60,21 +60,28 @@ def backup_db():
 # ===== FORCE JOIN ====
 def get_user(uid, name, ref=None):
     cur.execute("SELECT * FROM users WHERE id=?", (uid,))
-    if not cur.fetchone():
+    user = cur.fetchone()   # 👈 اول value واخله
+
+    if not user:
         cur.execute("INSERT INTO users(id,name,ref) VALUES(?,?,?)", (uid, name, ref))
         conn.commit()
-        backup_db()
+        
 
+        # ✅ invite reward only first time
+        if ref and ref != uid:
+            cur.execute("UPDATE users SET balance=balance+?,invites=invites+1 WHERE id=?", (INVITE_REWARD, ref))
+            conn.commit()
+        
         # ✅ invite abuse fix
         if ref and ref != uid:
             cur.execute("UPDATE users SET balance=balance+?,invites=invites+1 WHERE id=?", (INVITE_REWARD, ref))
             conn.commit()
-            backup_db()
+            
 
 def set_setting(k, v):
     cur.execute("REPLACE INTO settings(key,value) VALUES(?,?)", (k, v))
     conn.commit()
-    backup_db()
+    
 
 def get_setting(k):
     cur.execute("SELECT value FROM settings WHERE key=?", (k,))
@@ -260,7 +267,11 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         uid = update.effective_user.id
         name = update.effective_user.first_name
-        get_user(uid, name)   # ← دلته اول یوزر جوړ شي
+
+        # ✅ user فقط یو ځل create شي
+        cur.execute("SELECT id FROM users WHERE id=?", (uid,))
+        if not cur.fetchone():
+            get_user(uid, name)
 
         text = update.message.text or ""
         # ✅ MULTI FORCE JOIN CHECK
