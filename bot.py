@@ -198,6 +198,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     get_user(uid, name, ref)
 
     # ===== FORCE JOIN =====
+    if uid != ADMIN_ID:
     if not await is_joined_all(uid, context.bot):
         await update.message.reply_text(
             "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
@@ -302,23 +303,24 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ✅ MULTI FORCE JOIN CHECK
 # ✅ MULTI FORCE JOIN CHECK
-        if not await is_joined_all(uid, context.bot):
-            await update.message.reply_text(
-                "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
-                reply_markup=force_join_keyboard(),
-                parse_mode='HTML'
-            )
-            return
+    # MULTI FORCE JOIN CHECK
+        # # MULTI FORCE JOIN CHECK
+if uid != ADMIN_ID and not await is_joined_all(uid, context.bot):
+    await update.message.reply_text(
+        "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
+        reply_markup=force_join_keyboard(),
+        parse_mode='HTML'
+    )
+    return
 
-
-        # BACK
-        if text == "🔙 وتل":
-            await update.message.reply_text(
-                "<b>🏠 اصلي مینو ته لاړې</b>",
-                reply_markup=main_kb(),
-                parse_mode='HTML'
-            )
-            return
+# BACK
+if text == "🔙 وتل":
+    await update.message.reply_text(
+        "<b>🏠 اصلي مینو ته لاړې</b>",
+        reply_markup=main_kb(),
+        parse_mode='HTML'
+    )
+    return
 
         # ===== ADMIN =====
         if uid == ADMIN_ID and text == "/admin":
