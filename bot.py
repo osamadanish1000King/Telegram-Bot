@@ -238,7 +238,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         get_user(uid, name)   # ← دلته اول یوزر جوړ شي
 
         text = update.message.text or ""
-        
+        # ✅ MULTI FORCE JOIN CHECK
+        if not await is_joined_all(uid, context.bot):
+            await update.message.reply_text(
+                "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
+                reply_markup=force_join_keyboard(),
+                parse_mode='HTML'
+            )
+            return
 # ===== MULTI FORCE JOIN =====
 if not await is_joined_all(uid, context.bot):
     await update.message.reply_text(
