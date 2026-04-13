@@ -154,20 +154,36 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ref = int(context.args[0]) if context.args else None
     get_user(uid, name, ref)
 
-    # Force Join Check
-    link = get_setting("force_join")
-    if link and not await is_joined(uid, context.bot, link):
+    # ===== FORCE JOIN =====
+    if not await is_joined_all(uid, context.bot):
         await update.message.reply_text(
-            "<b>❗ مهرباني وکړه لومړی چینل جواین کړه!</b>",
-            reply_markup=InlineKeyboardMarkup([   # ← مستقیم Inline Button
-                [InlineKeyboardButton("📢 چینل جواین کړه", url=link)]
-            ]),
+            "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
+            reply_markup=force_join_keyboard(),
             parse_mode='HTML'
         )
         return
 
+    # ===== START MESSAGE =====
+    msg = """
+<b>🌟 ښه راغلاست ګرانه کاروونکي! 👋
+
+💸 دلته ته کولی شې ډېري په اسانۍ سره افغانۍ وګټې!
+
+🎯 څنګه کار کوي؟
+👥 ملګري دعوت کړه
+🎁 بونسونه ترلاسه کړه
+📢 ټاسکونه ترسره کړه
+
+💰 هر دعوت = جایزه
+🎁 ورځنۍ او اوونیز بونس هم شته!
+
+🚀 همدا اوس پیل کړه او عاید جوړ کړه 👇
+
+👇 له مینو څخه یو انتخاب وکړه</b>
+"""
+
     await update.message.reply_text(
-        "<b>👇 له مینو څخه یو انتخاب وکړه</b>",
+        msg,
         reply_markup=main_kb(),
         parse_mode='HTML'
     )
