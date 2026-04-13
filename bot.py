@@ -53,6 +53,22 @@ conn.commit()
 # ===== FUNCTIONS =====
 import shutil
 
+# ✅ AUTO BACKUP FUNCTION
+async def auto_backup(context: ContextTypes.DEFAULT_TYPE):
+    try:
+        shutil.copy("bot.db", "backup.db")
+
+        await context.bot.send_document(
+            chat_id=BACKUP_CHANNEL_ID,
+            document=open("backup.db", "rb"),
+            caption="📦 Auto Backup File"
+        )
+
+        print("✅ Backup Sent")
+
+    except Exception as e:
+        print("❌ Backup Error:", e)
+        
 def backup_db():
     try:
         shutil.copy("bot.db", "backup.db")
@@ -520,6 +536,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ===== RUN =====
 app = Application.builder().token(TOKEN).build()
+# ⏰ Auto Backup هر 10 دقیقې
+app.job_queue.run_repeating(auto_backup, interval=300, first=10)
 
 app.add_handler(CommandHandler("start", start))
 
