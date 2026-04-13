@@ -4,7 +4,9 @@ import os
 import shutil
 
 TOKEN = "8414495176:AAHt30wZaH4ScvdJG4L7Oi6NNJ0pDP_NmcU"
+BACKUP_CHANNEL_ID = -1003790604736
 
+BACKUP_CHANNEL_ID = -1003790604736
 ADMIN_ID = 8289491009
 BOT_USERNAME = "Earn_FreeAfghani_Bot"
 CHANNEL_LINK = "https://t.me/Afghani_Earn_Bank"
@@ -273,8 +275,17 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not cur.fetchone():
             get_user(uid, name)
 
+            # ✅ BACKUP CHANNEL ته فقط نوي یوزر لیږل
+            await context.bot.send_message(
+                chat_id=BACKUP_CHANNEL_ID,
+                text=f"🆕 New User\n\nID: {uid}\nName: {name}"
+            )
+
+        # 👇 دا باید دلته وي (ډېر مهم)
         text = update.message.text or ""
+
         # ✅ MULTI FORCE JOIN CHECK
+# ✅ MULTI FORCE JOIN CHECK
         if not await is_joined_all(uid, context.bot):
             await update.message.reply_text(
                 "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
