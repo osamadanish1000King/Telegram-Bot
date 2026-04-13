@@ -1,6 +1,7 @@
 import sqlite3
 import datetime
 import os
+import json 
 from telegram import *
 from telegram.ext import *
 
@@ -70,6 +71,19 @@ def time_left(last, sec):
 
 # ===== FORCE JOIN =====
 # ===== FORCE JOIN =====
+# ===== MULTI FORCE JOIN (څو چینلونه) =====
+def get_force_channels():
+    data = get_setting("force_channels")
+    if data:
+        try:
+            return json.loads(data)
+        except:
+            return []
+    return []
+
+def set_force_channels(channels):
+    set_setting("force_channels", json.dumps(channels))
+
 async def is_joined(uid, bot, link):
     try:
         chat = link.replace("https://t.me/", "@")
@@ -78,22 +92,25 @@ async def is_joined(uid, bot, link):
     except:
         return False
 
-async def check_force_join(update: Update, context: ContextTypes.DEFAULT_TYPE, uid):
-    link = get_setting("force_join")
-    if not link:
-        return False
-    
-    if await is_joined(uid, context.bot, link):
-        return False
-    
-    await update.message.reply_text(
-        "<b>❗ مهرباني وکړه لومړی چینل جواین کړه ترڅو ربات کار وکړي!</b>",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 چینل جواین کړه", url=link)]
-        ]),
-        parse_mode='HTML'
-    )
+async def is_joined_all(uid, bot):
+    channels = get_force_channels()
+    if not channels:
+        return True
+    for link in channels:
+        if not await is_joined(uid, bot, link):
+            return False
     return True
+
+def force_join_keyboard():
+    channels = get_force_channels()
+    if not channels:
+        return None
+    buttons = []
+    for link in channels:
+        channel_name = link.replace("https://t.me/", "").replace("@", "")
+        buttons.append([InlineKeyboardButton(f"📢 {channel_name}", url=link)])
+    buttons.append([InlineKeyboardButton("✅ چک کړم - ټول جواین شوي", callback_data="check_force")])
+    return InlineKeyboardMarkup(buttons)
 # ===== KEYBOARDS =====
 def main_kb():
     return ReplyKeyboardMarkup([
