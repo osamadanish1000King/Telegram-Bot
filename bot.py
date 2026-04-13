@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS settings(
 """)
 
 conn.commit()
-backup_db()
+
 
 # ===== FUNCTIONS =====
 import shutil
