@@ -1,9 +1,7 @@
 import sqlite3
 import datetime
 import os
-import json 
-from telegram import *
-from telegram.ext import *
+import shutil
 
 TOKEN = "8414495176:AAHt30wZaH4ScvdJG4L7Oi6NNJ0pDP_NmcU"
 
@@ -15,9 +13,17 @@ INVITE_REWARD = 4
 DAILY_REWARD = 1
 WEEKLY_REWARD = 5
 
+# ===== RESTORE DB =====
+if not os.path.exists("bot.db") and os.path.exists("backup.db"):
+    shutil.copy("backup.db", "bot.db")
+import json 
+from telegram import *
+from telegram.ext import *
 # ===== DB =====
-conn = sqlite3.connect("/mnt/data/bot.db", check_same_thread=False)
+# ===== DB =====
+conn = sqlite3.connect("bot.db", check_same_thread=False)
 cur = conn.cursor()
+
 cur.execute("""
 CREATE TABLE IF NOT EXISTS users(
     id INTEGER PRIMARY KEY,
@@ -40,6 +46,7 @@ CREATE TABLE IF NOT EXISTS settings(
 """)
 
 conn.commit()
+backup_db()
 
 # ===== FUNCTIONS =====
 def get_user(uid, name, ref=None):
@@ -47,15 +54,18 @@ def get_user(uid, name, ref=None):
     if not cur.fetchone():
         cur.execute("INSERT INTO users(id,name,ref) VALUES(?,?,?)", (uid, name, ref))
         conn.commit()
+        backup_db()
 
         # ✅ invite abuse fix
         if ref and ref != uid:
             cur.execute("UPDATE users SET balance=balance+?,invites=invites+1 WHERE id=?", (INVITE_REWARD, ref))
             conn.commit()
+            backup_db()
 
 def set_setting(k, v):
     cur.execute("REPLACE INTO settings(key,value) VALUES(?,?)", (k, v))
     conn.commit()
+    backup_db()
 
 def get_setting(k):
     cur.execute("SELECT value FROM settings WHERE key=?", (k,))
@@ -67,6 +77,14 @@ def time_left(last, sec):
         return 0
     last = datetime.datetime.fromisoformat(last)
     return sec - (datetime.datetime.now() - last).total_seconds()
+
+import shutil
+
+def backup_db():
+    try:
+        shutil.copy("bot.db", "backup.db")
+    except:
+        pass
 
 # ===== FORCE JOIN =====
 # ===== FORCE JOIN =====
@@ -204,6 +222,7 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cur.execute("UPDATE users SET balance=balance+1,task_done=1 WHERE id=?", (uid,))
     conn.commit()
+    backup_db()
 
     await q.edit_message_text("<b>✅ Done +1</b>", parse_mode='HTML')
 
@@ -286,6 +305,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 uid2, amount = text.split()
                 cur.execute("UPDATE users SET balance=balance+? WHERE id=?", (float(amount), int(uid2)))
                 conn.commit()
+                backup_db()
                 await update.message.reply_text("<b>✅ اضافه شو</b>", parse_mode='HTML')
             except:
                 await update.message.reply_text("<b>❌ غلط format</b>", parse_mode='HTML')
@@ -351,6 +371,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if uid == ADMIN_ID and text == "♻️ Task Reset":
             cur.execute("UPDATE users SET task_done=0")
             conn.commit()
+            backup_db()
             await update.message.reply_text("<b>✅ ریست شو</b>", parse_mode='HTML')
             return
 
@@ -369,6 +390,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             phone = update.message.contact.phone_number
             cur.execute("UPDATE users SET phone=? WHERE id=?", (phone, uid))
             conn.commit()
+            backup_db()
             await update.message.reply_text("<b>✅ شمېره ثبت شوه</b>", reply_markup=main_kb(), parse_mode='HTML')
 
         elif text == "📞 شمېره ثبت کړی":
@@ -405,6 +427,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cur.execute("UPDATE users SET balance=balance+?,daily=? WHERE id=?",
                             (DAILY_REWARD, datetime.datetime.now().isoformat(), uid))
                 conn.commit()
+                backup_db()
                 await update.message.reply_text("<b>🎉 1 افغانۍ ترلاسه شوې</b>", parse_mode='HTML')
 
         elif text == "🎁 اوونیز بونس":
@@ -419,6 +442,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cur.execute("UPDATE users SET balance=balance+?,weekly=? WHERE id=?",
                             (WEEKLY_REWARD, datetime.datetime.now().isoformat(), uid))
                 conn.commit()
+                backup_db()
                 await update.message.reply_text("<b>🎉 5 افغانۍ ترلاسه شوې</b>", parse_mode='HTML')
 
         elif text == "💰 افغانۍ زیاتول":
