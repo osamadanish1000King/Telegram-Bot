@@ -383,14 +383,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         # ===== FORCE JOIN CHECK =====
-        link = get_setting("force_join")
-        if link and not await is_joined(uid, context.bot, link):
-            await update.message.reply_text(
-                "<b>❗ مهرباني وکړه چینل جواین کړه</b>",
-                reply_markup=force_join_btn(link),
-                parse_mode='HTML'
-            )
-            return
+        
 
         # ===== USER COMMANDS =====
         if update.message.contact:
