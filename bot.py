@@ -49,6 +49,15 @@ conn.commit()
 backup_db()
 
 # ===== FUNCTIONS =====
+import shutil
+
+def backup_db():
+    try:
+        shutil.copy("bot.db", "backup.db")
+    except:
+        pass
+
+# ===== FORCE JOIN ====
 def get_user(uid, name, ref=None):
     cur.execute("SELECT * FROM users WHERE id=?", (uid,))
     if not cur.fetchone():
@@ -78,15 +87,7 @@ def time_left(last, sec):
     last = datetime.datetime.fromisoformat(last)
     return sec - (datetime.datetime.now() - last).total_seconds()
 
-import shutil
 
-def backup_db():
-    try:
-        shutil.copy("bot.db", "backup.db")
-    except:
-        pass
-
-# ===== FORCE JOIN =====
 # ===== FORCE JOIN =====
 # ===== MULTI FORCE JOIN (څو چینلونه) =====
 def get_force_channels():
@@ -511,4 +512,5 @@ app.add_handler(CallbackQueryHandler(check_force, pattern="check_force"))
 app.add_handler(MessageHandler(filters.TEXT | filters.CONTACT, handler))
 
 print("BOT RUNNING...")
+backup_db()
 app.run_polling()
