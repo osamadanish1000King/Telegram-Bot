@@ -16,9 +16,8 @@ DAILY_REWARD = 1
 WEEKLY_REWARD = 5
 
 # ===== DB =====
-conn = sqlite3.connect("bot.db", check_same_thread=False)
+conn = sqlite3.connect("/mnt/data/bot.db", check_same_thread=False)
 cur = conn.cursor()
-
 cur.execute("""
 CREATE TABLE IF NOT EXISTS users(
     id INTEGER PRIMARY KEY,
