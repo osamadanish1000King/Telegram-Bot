@@ -309,15 +309,23 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("<b>✅ واستول شو</b>", parse_mode='HTML')
             return
 
+        # ➕ Force Join Add
         if uid == ADMIN_ID and text == "➕ Force Join Add":
             context.user_data["f"] = True
             await update.message.reply_text("<b>🔗 لینک راکړه</b>", parse_mode='HTML')
             return
 
+        # 📥 Force Join لینک save کول (Multi)
         if uid == ADMIN_ID and context.user_data.get("f") and text.startswith("http"):
-            set_setting("force_join", text)
+            channels = get_force_channels()
+
+            if text not in channels:
+                channels.append(text)
+
+            set_force_channels(channels)
+
             context.user_data["f"] = False
-            await update.message.reply_text("<b>✅ Force Join اضافه شو</b>", parse_mode='HTML')
+            await update.message.reply_text("<b>✅ چینل اضافه شو</b>", parse_mode='HTML')
             return
 
         if uid == ADMIN_ID and text == "➖ Force Join Del":
