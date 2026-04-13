@@ -246,21 +246,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode='HTML'
             )
             return
-# ===== MULTI FORCE JOIN =====
-if not await is_joined_all(uid, context.bot):
-    await update.message.reply_text(
-        "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
-        reply_markup=force_join_keyboard(),
-        parse_mode='HTML'
-    )
-    return
-            
 
-        uid = update.effective_user.id
-        name = update.effective_user.first_name
-        get_user(uid, name)
-
-        text = update.message.text or ""
 
         # BACK
         if text == "🔙 وتل":
