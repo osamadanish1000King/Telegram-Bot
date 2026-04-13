@@ -181,6 +181,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # ===== MAIN MENU =====
+    await update.message.reply_text(
+        "<b>✅ ربات ته ښه راغلاست</b>",
+        reply_markup=main_kb(),
+        parse_mode='HTML'
+    )
     # ===== START MESSAGE =====
     msg = """
 <b>🌟 ښه راغلاست ګرانه کاروونکي! 👋
