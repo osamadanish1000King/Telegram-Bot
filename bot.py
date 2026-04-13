@@ -188,6 +188,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 # ===== CALLBACK =====
+# ===== CALLBACK (TASK DONE) =====
 async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -197,6 +198,7 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ✅ task abuse fix
     cur.execute("SELECT task_done FROM users WHERE id=?", (uid,))
     row = cur.fetchone()
+
     if row and row[0] == 1:
         await q.answer("❌ مخکې دې اخیستی", show_alert=True)
         return
@@ -206,7 +208,26 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await q.edit_message_text("<b>✅ Done +1</b>", parse_mode='HTML')
 
-# ===== MAIN HANDLER =====
+# ===== FORCE JOIN CHECK BUTTON =====
+async def check_force(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+
+    uid = q.from_user.id
+
+    # چک کوي چې ټول چینلونه جواین شوي که نه
+    if await is_joined_all(uid, context.bot):
+        await q.message.delete()
+
+        await context.bot.send_message(
+            chat_id=uid,
+            text="<b>✅ ته ټول چینلونه جواین کړي! ربات شروع شو 🎉</b>",
+            reply_markup=main_kb(),
+            parse_mode='HTML'
+        )
+    else:
+        await q.answer("❌ لا هم ټول چینلونه نه دي جواین شوي!", show_alert=True)
+#handler
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message:
@@ -217,18 +238,15 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         get_user(uid, name)   # ← دلته اول یوزر جوړ شي
 
         text = update.message.text or ""
-
-        # ===== FORCE JOIN CHECK =====
-        link = get_setting("force_join")
-        if link and not await is_joined(uid, context.bot, link):
-            await update.message.reply_text(
-                "<b>❗ مهرباني وکړه لومړی چینل جواین کړه!</b>",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("📢 چینل جواین کړه", url=link)]
-                ]),
-                parse_mode='HTML'
-            )
-            return
+        
+# ===== MULTI FORCE JOIN =====
+if not await is_joined_all(uid, context.bot):
+    await update.message.reply_text(
+        "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
+        reply_markup=force_join_keyboard(),
+        parse_mode='HTML'
+    )
+    return
             
 
         uid = update.effective_user.id
@@ -458,7 +476,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app = Application.builder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(done))
+
+# ✅ TASK DONE BUTTON
+app.add_handler(CallbackQueryHandler(done, pattern="done"))
+
+# ✅ FORCE JOIN CHECK BUTTON
+app.add_handler(CallbackQueryHandler(check_force, pattern="check_force"))
+
+# ✅ MAIN HANDLER
 app.add_handler(MessageHandler(filters.TEXT | filters.CONTACT, handler))
 
 print("BOT RUNNING...")
