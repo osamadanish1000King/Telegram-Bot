@@ -198,14 +198,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     get_user(uid, name, ref)
 
     # ===== FORCE JOIN =====
-    if not await is_joined_all(uid, context.bot):
-        await update.message.reply_text(
+    if uid == ADMIN_ID or await is_joined_all(uid, context.bot):
+    await update.message.reply_text(
+        "<b>✅ داخل شوې 🎉</b>",
+        reply_markup=main_kb(),
+        parse_mode='HTML'
+    )
+else:
+    await update.message.reply_text(
         "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
         reply_markup=force_join_keyboard(),
         parse_mode='HTML'
     )
     return
-
     # ===== MAIN MENU =====
     await update.message.reply_text(
         "<b>✅ ربات ته ښه راغلاست</b>",
@@ -302,15 +307,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ✅ MULTI FORCE JOIN CHECK
 # ✅ MULTI FORCE JOIN CHECK
-    # MULTI FORCE JOIN CHECK
-        # # MULTI FORCE JOIN CHECK
-if uid != ADMIN_ID and not await is_joined_all(uid, context.bot):
-    await update.message.reply_text(
-        "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
-        reply_markup=force_join_keyboard(),
-        parse_mode='HTML'
-    )
-    return
+        # MULTI FORCE JOIN CHECK
+        if uid != ADMIN_ID and not await is_joined_all(uid, context.bot):
+            await update.message.reply_text(
+                "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
+                reply_markup=force_join_keyboard(),
+                parse_mode='HTML'
+            )
+            return
 
 # BACK
 if text == "🔙 وتل":
