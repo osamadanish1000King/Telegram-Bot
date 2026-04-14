@@ -199,18 +199,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ===== FORCE JOIN =====
     if uid == ADMIN_ID or await is_joined_all(uid, context.bot):
-    await update.message.reply_text(
-        "<b>✅ داخل شوې 🎉</b>",
-        reply_markup=main_kb(),
-        parse_mode='HTML'
-    )
-else:
-    await update.message.reply_text(
-        "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
-        reply_markup=force_join_keyboard(),
-        parse_mode='HTML'
-    )
-    return
+        await update.message.reply_text(
+            "<b>✅ داخل شوې 🎉</b>",
+            reply_markup=main_kb(),
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_text(
+            "<b>❗ مهرباني وکړه ټول چینلونه جواین کړه</b>",
+            reply_markup=force_join_keyboard(),
+            parse_mode='HTML'
+        )
+        return
     # ===== MAIN MENU =====
     await update.message.reply_text(
         "<b>✅ ربات ته ښه راغلاست</b>",
